@@ -1,0 +1,1 @@
+We need JNI headers, but not the rest of the JVM when we're cross compiling. Just including jni.h and friends is a reasonable way to deal with this (it's actually what wpilib's gradle-jni does). The entire build process is a bit of a hack, including this. If this takes off with people in FTC then I might be persuaded to use the blessed Android NDK way of doing things.
