@@ -91,7 +91,7 @@ public class T265Camera
      * @param odometryCovariance Covariance of the odometry input when doing
      *                           sensor fusion (you probably want to tune this).
      */
-    public T265Camera(Pose2d robotOffset, double odometryCovariance)
+    public T265Camera(Transform2d robotOffset, double odometryCovariance)
     {
         this(robotOffset, odometryCovariance, "");
     }

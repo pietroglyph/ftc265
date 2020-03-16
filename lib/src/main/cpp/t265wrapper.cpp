@@ -165,7 +165,7 @@ jlong Java_com_spartronics4915_lib_hardware_sensors_T265Camera_newCamera(JNIEnv 
             try
             {
                 // Attaching the thread is expensive... TODO: Cache env?
-                int error = jvm->AttachCurrentThread((void **)&env, nullptr);
+                int error = jvm->AttachCurrentThread(&env, nullptr);
                 if (error)
                     throw std::runtime_error("Couldn't attach callback thread to jvm");
 

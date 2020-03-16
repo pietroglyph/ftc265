@@ -2,14 +2,12 @@ cmake_minimum_required(VERSION 3.9)
 
 project(ftc265 VERSION 2020.1.0)
 
-# Add jni headers (may not be needed for Android; TODO)
-#find_package(realsense2 REQUIRED)
-#if (NOT CMAKE_TOOLCHAIN_FILE)
-#    find_package(JNI REQUIRED)
-#    include_directories(${JNI_INCLUDE_DIRS})
-#else()
-#    include_directories("jni/")
-#endif()
+# Find librealsense2
+# Note that we package the realsense2 sysroot and all of its headers+cmake configs in this repo
+# This is kind of a hack, but it makes it so that this repo builds all in one
+message(WARNING ${CMAKE_CXX_COMPILER_TARGET})
+set(realsense2_DIR "${CMAKE_CURRENT_LIST_DIR}/sysroot_${CMAKE_CXX_COMPILER_TARGET}/usr/local/lib/cmake/realsense2/")
+find_package(realsense2 NO_DEFAULT_PATH REQUIRED)
 
 # We only support C++17 and above
 set(CMAKE_CXX_STANDARD 17)
