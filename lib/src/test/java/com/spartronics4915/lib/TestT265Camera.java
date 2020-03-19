@@ -33,7 +33,7 @@
          T265Camera cam = null;
          try
          {
-             cam = new T265Camera(new Pose2d(), 0);
+             cam = new T265Camera(new Transform2d(), 0);
 
              // Just make sure this doesn't throw
              cam.sendOdometry(new Twist2d(0, 0, 0));
@@ -84,7 +84,7 @@
          T265Camera cam = null;
          try
          {
-             cam = new T265Camera(new Pose2d(), 0);
+             cam = new T265Camera(new Transform2d(), 0);
              cam.start((T265Camera.CameraUpdate unused) -> {});
 
              final T265Camera camTemp = cam;
