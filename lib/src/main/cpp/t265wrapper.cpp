@@ -284,7 +284,7 @@ Java_com_spartronics4915_lib_T265Camera_exportRelocalizationMap(JNIEnv *env, job
 
         env->ReleaseStringUTFChars(savePath, pathNativeStr);
 
-        std::cout << "[SpartronicsLib] Relocalization map exported\n";
+        std::cout << "[ftc265] Relocalization map exported\n";
 
         // TODO: Camera never gets started again...
         // If we try to call pipeline->start() it doesn't work. Bug in librealsense?
@@ -385,7 +385,7 @@ Java_com_spartronics4915_lib_T265Camera_cleanup(JNIEnv *env, jclass)
         
         // We use std::endl because we *want* to flush the buffer
         // (The program is about to exit and messages get lost)
-        std::cout << "[SpartronicsLib] T265 native wrapper gracefully shut down" << std::endl;
+        std::cout << "[ftc265] T265 native wrapper gracefully shut down" << std::endl;
     }
     catch (std::exception &e)
     {
