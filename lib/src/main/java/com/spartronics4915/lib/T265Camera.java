@@ -20,20 +20,16 @@ import java.util.function.Consumer;
  * giving us a third dimension (Z).
  * <p>
  * The coordinate system is as follows:
- *   + X == Camera forwards
- *   + Y == Camera Left (left is from the perspective of a viewer standing behind the camera)
+ * + X == Camera forwards
+ * + Y == Camera Left (left is from the perspective of a viewer standing behind the camera)
  * <p>
  * All distance units are meters. All time units are seconds.
  */
-public class T265Camera
-{
+public class T265Camera {
     private static UnsatisfiedLinkError mLinkError = null;
 
-    static
-    {
-        // FIXME: Use System.loadLibrary
-        try
-        {
+    static {
+        try {
             System.loadLibrary("ftc265");
 
             // Cleanup is quite tricky for us, because the native code has no idea when Java
@@ -42,20 +38,16 @@ public class T265Camera
             // results in unfinished callbacks blocking. As a result a shutdown hook is our
             // best option.
             Runtime.getRuntime().addShutdownHook(new Thread(() -> T265Camera.cleanup()));
-        }
-        catch (UnsatisfiedLinkError e)
-        {
+        } catch (UnsatisfiedLinkError e) {
             mLinkError = e;
         }
     }
 
-    public static enum PoseConfidence
-    {
+    public static enum PoseConfidence {
         Failed, Low, Medium, High,
     }
 
-    public static class CameraUpdate
-    {
+    public static class CameraUpdate {
         /**
          * The robot's pose in meters.
          */
@@ -66,8 +58,7 @@ public class T265Camera
         public final ChassisSpeeds velocity;
         public final PoseConfidence confidence;
 
-        public CameraUpdate(Pose2d pose, ChassisSpeeds velocity, PoseConfidence confidence)
-        {
+        public CameraUpdate(Pose2d pose, ChassisSpeeds velocity, PoseConfidence confidence) {
             this.pose = pose;
             this.velocity = velocity;
             this.confidence = confidence;
@@ -83,7 +74,7 @@ public class T265Camera
 
     /**
      * This method constructs a T265 camera and sets it up with the right info.
-     * {@link T265Camera#start() start} will not be called, you must call it
+     * {@link T265Camera#start start} will not be called, you must call it
      * yourself.
      *
      * @param robotOffset        Offset of the center of the robot from the center
@@ -91,27 +82,24 @@ public class T265Camera
      * @param odometryCovariance Covariance of the odometry input when doing
      *                           sensor fusion (you probably want to tune this).
      */
-    public T265Camera(Transform2d robotOffset, double odometryCovariance)
-    {
+    public T265Camera(Transform2d robotOffset, double odometryCovariance) {
         this(robotOffset, odometryCovariance, "");
     }
 
     /**
      * This method constructs a T265 camera and sets it up with the right info.
-     * {@link T265Camera#start() start} will not be called, you must call it
+     * {@link T265Camera#start start} will not be called, you must call it
      * yourself.
      *
-     * @param robotOffsetMeters        Offset of the center of the robot from the center
+     * @param robotOffsetMeters  Offset of the center of the robot from the center
      *                           of the camera. Units are meters.
      * @param odometryCovariance Covariance of the odometry input when doing
-     *                           sensor fusion (you probablywant to tune this)
+     *                           sensor fusion (you probably want to tune this)
      * @param relocMapPath       path (including filename) to a relocalization map
      *                           to load.
      */
-    public T265Camera(Transform2d robotOffsetMeters, double odometryCovariance, String relocMapPath)
-    {
-        if (mLinkError != null)
-        {
+    public T265Camera(Transform2d robotOffsetMeters, double odometryCovariance, String relocMapPath) {
+        if (mLinkError != null) {
             throw mLinkError;
         }
 
@@ -123,21 +111,20 @@ public class T265Camera
     }
 
     /**
-     * This allows the user-provided pose recieve callback to recieve data.
+     * This allows the user-provided pose receive callback to receive data.
      * This will also reset the camera's pose to (0, 0) at 0 degrees.
      * <p>
      * This will not restart the camera following exportRelocalizationMap. You will
      * have to call {@link T265Camera#free()} and make a new {@link T265Camera}.
      * This is related to what appears to be a bug in librealsense.
      *
-     * @param poseConsumer A method to be called every time we recieve a pose from
+     * @param poseConsumer A method to be called every time we receive a pose from
      *                     <i>from a different thread</i>! You must synchronize
-     *                     memory access accross threads!
+     *                     memory access across threads!
      *                     <p>
-     *                     Recieved poses are in meters.
+     *                     Received poses are in meters.
      */
-    public synchronized void start(Consumer<CameraUpdate> poseConsumer)
-    {
+    public synchronized void start(Consumer<CameraUpdate> poseConsumer) {
         if (mIsStarted)
             throw new RuntimeException("T265 camera is already started");
         mPoseConsumer = poseConsumer;
@@ -145,11 +132,10 @@ public class T265Camera
     }
 
     /**
-     * This allows the callback to recieve data, but it does not internally stop the
+     * This allows the callback to receivez data, but it does not internally stop the
      * camera.
      */
-    public synchronized void stop()
-    {
+    public synchronized void stop() {
         mIsStarted = false;
     }
 
@@ -165,10 +151,9 @@ public class T265Camera
     /**
      * Sends robot velocity as computed from wheel encoders.
      *
-     * @param velocity    The robot's translational velocity in meters/sec.
+     * @param velocity The robot's translational velocity in meters/sec.
      */
-    public void sendOdometry(Twist2d velocity)
-    {
+    public void sendOdometry(Twist2d velocity) {
         Pose2d transVel = new Pose2d().exp(velocity);
         // Only 1 odometry sensor is supported for now (index 0)
         sendOdometryRaw(0, (float) transVel.getTranslation().getX(),
@@ -180,8 +165,7 @@ public class T265Camera
      *
      * @param newPose The pose the camera should be zeroed to.
      */
-    public synchronized void setPose(Pose2d newPose)
-    {
+    public synchronized void setPose(Pose2d newPose) {
         mOrigin = newPose;
     }
 
@@ -201,9 +185,8 @@ public class T265Camera
 
     private static native void cleanup();
 
-    private synchronized void consumePoseUpdate(float x, float y, float radians, float dx,
-                                                float dtheta, int confOrdinal)
-    {
+    private synchronized void consumePoseUpdate(float x, float y, float radians, float dx, float dy,
+                                                float dtheta, int confOrdinal) {
         // First we apply an offset to go from the camera coordinate system to the
         // robot coordinate system with an origin at the center of the robot. This
         // is not a directional transformation.
@@ -222,8 +205,7 @@ public class T265Camera
         // https://github.com/IntelRealSense/librealsense/blob/7f2ba0de8769620fd672f7b44101f0758e7e2fb3/include/librealsense2/h/rs_types.h#L115
         // for ordinals
         PoseConfidence confidence;
-        switch (confOrdinal)
-        {
+        switch (confOrdinal) {
             case 0x0:
                 confidence = PoseConfidence.Failed;
                 break;
@@ -242,21 +224,19 @@ public class T265Camera
         }
 
         final Pose2d transformedPose = mOrigin.transformBy(new Transform2d(currentPose.getTranslation(), currentPose.getRotation()));
-        // XXX: Right now we assume the robot is nonholonomic when filling chassis speeds. Needs to be fixed here and on the native side.
+
         mPoseConsumer.accept(new CameraUpdate(transformedPose,
-                new ChassisSpeeds(dx, 0.0, dtheta), confidence));
+                new ChassisSpeeds(dx, dy, dtheta), confidence));
     }
 
     /**
      * Thrown if something goes wrong in the native code
      */
-    public static class CameraJNIException extends RuntimeException
-    {
+    public static class CameraJNIException extends RuntimeException {
 
         // This must be static _and_ have this constructor if you want it to be
         // thrown from native code
-        public CameraJNIException(String message)
-        {
+        public CameraJNIException(String message) {
             super(message);
         }
     }
