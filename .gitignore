@@ -11,6 +11,8 @@
 .DS_Store
 .externalNativeBuild
 
+lib/src/main/jniLibs/
+
 # Built application files
 *.apk
 *.aar
