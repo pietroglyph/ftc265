@@ -84,6 +84,20 @@ constexpr auto odometryConfig = R"(
 )";
 
 extern "C"
+JNIEXPORT jint JNICALL
+JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
+    JNIEnv* env;
+    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+        std::cerr << "[ftc265] Native code initialization failed! Wrong JNI version.\n";
+
+        return JNI_ERR;
+    }
+
+    std::cout << "[ftc265] Native code initialized\n";
+    return JNI_VERSION_1_6;
+}
+
+extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj, jstring mapPath) {
     try
@@ -131,12 +145,6 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj, 
             throw std::runtime_error("Selected device does not support wheel odometry inputs");
         if (!pose)
             throw std::runtime_error("Selected device does not have a pose sensor");
-
-        // Ensure that pipeline->start(...) chooses the devices we just got
-        auto poseSerial = pose->get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
-        auto odomSerial = pose->get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
-        config.enable_device(poseSerial);
-        config.enable_device(odomSerial);
 
         // Import the relocalization map, if the path is nonempty
         auto pathNativeStr = env->GetStringUTFChars(mapPath, 0);

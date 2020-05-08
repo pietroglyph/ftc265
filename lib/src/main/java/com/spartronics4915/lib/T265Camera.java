@@ -1,5 +1,9 @@
 package com.spartronics4915.lib;
 
+import android.Manifest;
+import android.content.Context;
+import android.content.pm.PackageManager;
+
 import com.arcrobotics.ftclib.geometry.Pose2d;
 import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.geometry.Transform2d;
@@ -7,6 +11,9 @@ import com.arcrobotics.ftclib.geometry.Twist2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 
 import java.util.function.Consumer;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 /**
  * Provides a convenient Java interface to the Intel RealSense
@@ -30,6 +37,8 @@ public class T265Camera {
 
     static {
         try {
+            System.out.println("[ftc265] Attempting to load native code");
+
             System.loadLibrary("ftc265");
 
             // Cleanup is quite tricky for us, because the native code has no idea when Java
@@ -39,6 +48,7 @@ public class T265Camera {
             // best option.
             Runtime.getRuntime().addShutdownHook(new Thread(() -> T265Camera.cleanup()));
         } catch (UnsatisfiedLinkError e) {
+            System.out.println("[ftc265] Failed to load native code: " + e.getLocalizedMessage());
             mLinkError = e;
         }
     }
