@@ -12,6 +12,7 @@
 .externalNativeBuild
 
 lib/src/main/jniLibs/
+lib/src/main/cpp/include/librealsense2/
 
 # Built application files
 *.apk

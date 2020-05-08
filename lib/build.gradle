@@ -13,9 +13,10 @@ android {
         minSdkVersion 24
         targetSdkVersion 29
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         consumerProguardFiles 'consumer-rules.pro'
 
         ndk {
@@ -35,19 +36,34 @@ android {
     // This is so we build the JNI wrapper
     externalNativeBuild {
         cmake {
-            path 'src/main/cpp/CMakeLists.txt'
+            path 'CMakeLists.txt'
         }
     }
+
     compileOptions {
         sourceCompatibility = 1.8
         targetCompatibility = 1.8
     }
 
+    // So we can use Android framework code in unit tests
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
 }
 
 repositories {
     // Needed for FTCLib
     jcenter()
+
+    // Needed for librealsense
+    maven{
+        url "https://dl.bintray.com/intel-realsense/librealsense"
+    }
+}
+
+configurations {
+    downloadHeader
+    downloadSo
 }
 
 dependencies {
@@ -55,29 +71,63 @@ dependencies {
 
     implementation 'com.arcrobotics:ftclib:2.0.11' // For geometry classes
 
-    implementation 'androidx.appcompat:appcompat:1.0.2'
+    testImplementation 'junit:junit:4.12'
 
-    testImplementation "org.junit.jupiter:junit-jupiter-api:5.6.0"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.0"
+    // So we can use Android framework code in unit tests
+    testImplementation 'androidx.test:core:1.2.0'
+    testImplementation 'androidx.test.ext:junit:1.1.1'
+    testImplementation 'androidx.test:runner:1.2.0'
+    testImplementation 'androidx.test:rules:1.2.0'
+
+    def rsVersion = '2.34.0' // Change string to bump version
+    downloadSo 'com.intel.realsense:librealsense:' + rsVersion + '@aar'
+    implementation 'com.intel.realsense:librealsense:' + rsVersion + '@aar'
+    downloadHeader 'com.intel.realsense:librealsense:' + rsVersion + '@zip'
 }
+
+task extractHeaders(type: Sync) {
+    dependsOn configurations.downloadHeader
+    from { configurations.downloadHeader.collect { zipTree(it) } }
+    into "$projectDir/src/main/cpp/include"
+}
+
+
+task extractSo(type: Sync) {
+    dependsOn configurations.downloadSo
+    from { configurations.downloadSo.collect { zipTree(it) } }
+    include("jni/**")
+    into "$buildDir/"
+}
+
+preBuild.dependsOn(extractHeaders)
+preBuild.dependsOn(extractSo)
 
 afterEvaluate {
     publishing {
         publications {
             // Creates a Maven publication called "release".
             release(MavenPublication) {
-                // Applies the component for the release build variant.
-                from components.release
+                groupId = "com.spartronics4915.lib"
+                artifactId "ftc265"
+                version = android.defaultConfig.versionName
+                artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")
 
-                // You can then customize attributes of the publication as shown below.
-                groupId = 'com.spartronics4915.lib'
-                artifactId = 'ftc265'
-                version = '0.1.0'
-            }
-        }
-        repositories {
-            maven {
-                url "$buildDir/repo"
+                pom.withXml {
+                    def dependenciesNode = asNode().appendNode('dependencies')
+                    configurations.implementation.allDependencies.each {
+                        if (it.group != null && (it.name != null || "unspecified".equals(it.name)) && it.version != null) {
+                            def dependencyNode = dependenciesNode.appendNode('dependency')
+                            dependencyNode.appendNode('groupId', it.group)
+                            dependencyNode.appendNode('artifactId', it.name)
+                            dependencyNode.appendNode('version', it.version)
+                            if (it.name == "librealsense") {
+                                // There's no way to programmatically get the dependency classifier so we just check the name
+                                // This is important because otherwise Gradle will try to resolve this dep as a jar
+                                dependencyNode.appendNode('type', 'aar')
+                            }
+                        }
+                    }
+                }
             }
         }
     }

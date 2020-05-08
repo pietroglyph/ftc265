@@ -1,19 +1,15 @@
 package com.spartronics4915.lib;
 
-import android.Manifest;
 import android.content.Context;
-import android.content.pm.PackageManager;
 
 import com.arcrobotics.ftclib.geometry.Pose2d;
 import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.geometry.Transform2d;
 import com.arcrobotics.ftclib.geometry.Twist2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
+import com.intel.realsense.librealsense.RsContext;
 
 import java.util.function.Consumer;
-
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 /**
  * Provides a convenient Java interface to the Intel RealSense
@@ -92,8 +88,8 @@ public class T265Camera {
      * @param odometryCovariance Covariance of the odometry input when doing
      *                           sensor fusion (you probably want to tune this).
      */
-    public T265Camera(Transform2d robotOffset, double odometryCovariance) {
-        this(robotOffset, odometryCovariance, "");
+    public T265Camera(Transform2d robotOffset, double odometryCovariance, Context appContext) {
+        this(robotOffset, odometryCovariance, "", appContext);
     }
 
     /**
@@ -108,10 +104,12 @@ public class T265Camera {
      * @param relocMapPath       path (including filename) to a relocalization map
      *                           to load.
      */
-    public T265Camera(Transform2d robotOffsetMeters, double odometryCovariance, String relocMapPath) {
+    public T265Camera(Transform2d robotOffsetMeters, double odometryCovariance, String relocMapPath, Context appContext) {
         if (mLinkError != null) {
             throw mLinkError;
         }
+
+        RsContext.init(appContext);
 
         mNativeCameraObjectPointer = newCamera(relocMapPath);
         setOdometryInfo((float) robotOffsetMeters.getTranslation().getX(),
