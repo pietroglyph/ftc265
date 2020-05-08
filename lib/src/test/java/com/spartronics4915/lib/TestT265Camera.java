@@ -1,28 +1,30 @@
  package com.spartronics4915.lib;
 
- import static org.junit.jupiter.api.Assertions.assertThrows;
- import static org.junit.jupiter.api.Assertions.assertTrue;
- import static org.junit.jupiter.api.Assertions.fail;
+ import android.content.Context;
 
  import java.nio.file.Path;
  import java.nio.file.Paths;
 
- import com.arcrobotics.ftclib.geometry.Pose2d;
- import com.arcrobotics.ftclib.geometry.Rotation2d;
  import com.arcrobotics.ftclib.geometry.Transform2d;
  import com.arcrobotics.ftclib.geometry.Twist2d;
- import com.spartronics4915.lib.T265Camera;
 
- import org.junit.jupiter.api.Tag;
- import org.junit.jupiter.api.Test;
+
+ import org.junit.Ignore;
+ import org.junit.Test;
+
+ import androidx.test.core.app.ApplicationProvider;
+
+ import static junit.framework.TestCase.fail;
+ import static org.junit.Assert.assertTrue;
 
  public class TestT265Camera
  {
-
      private boolean mDataRecieved = false;
      private final Object mLock = new Object();
 
-     @Tag("hardwareDependant")
+     private Context context = ApplicationProvider.getApplicationContext();
+
+     @Ignore
      @Test
      public void testNewCamera() throws InterruptedException
      {
@@ -33,7 +35,7 @@
          T265Camera cam = null;
          try
          {
-             cam = new T265Camera(new Transform2d(), 0);
+             cam = new T265Camera(new Transform2d(), 0, context);
 
              // Just make sure this doesn't throw
              cam.sendOdometry(new Twist2d(0, 0, 0));
@@ -52,7 +54,7 @@
              cam.stop();
              synchronized (mLock)
              {
-                 assertTrue(mDataRecieved, "No pose data was recieved after 5 seconds... Try moving the camera?");
+                 assertTrue("No pose data was recieved after 5 seconds... Try moving the camera?", mDataRecieved);
              }
 
              System.out.println("Got pose data, exporting relocalization map to java.io.tmpdir...");
@@ -66,7 +68,7 @@
              cam.free();
 
              // Try making a new camera and importing the map
-             cam = new T265Camera(new Transform2d(), 0f, mapPath.toString());
+             cam = new T265Camera(new Transform2d(), 0f, mapPath.toString(), context);
 
              System.out.println("Map imported without errors!");
          }
@@ -77,18 +79,23 @@
          }
      }
 
-     @Tag("hardwareDependant")
+     @Ignore
      @Test
      public void testErrorChecking()
      {
          T265Camera cam = null;
          try
          {
-             cam = new T265Camera(new Transform2d(), 0);
+             cam = new T265Camera(new Transform2d(), 0, context);
              cam.start((T265Camera.CameraUpdate unused) -> {});
 
              final T265Camera camTemp = cam;
-             assertThrows(RuntimeException.class, () -> camTemp.start((T265Camera.CameraUpdate unused) -> {}));
+             try {
+                 camTemp.start((T265Camera.CameraUpdate unused) -> {});
+             } catch (RuntimeException e) {
+                 return;
+             }
+             fail("Camera didn't throw after double start call");
          }
          finally
          {
