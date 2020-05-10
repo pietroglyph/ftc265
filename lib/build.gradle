@@ -22,7 +22,7 @@ android {
         ndk {
             // Specifies the ABI configurations of your native
             // libraries Gradle should build and package with your APK.
-            abiFilters 'armeabi-v7a', 'arm64-v8a'
+            abiFilters 'armeabi-v7a'
         }
     }
 
@@ -55,9 +55,8 @@ repositories {
     // Needed for FTCLib
     jcenter()
 
-    // Needed for librealsense
-    maven{
-        url "https://dl.bintray.com/intel-realsense/librealsense"
+    maven {
+        url "https://maven.0x778.tk"
     }
 }
 
@@ -79,7 +78,7 @@ dependencies {
     testImplementation 'androidx.test:runner:1.2.0'
     testImplementation 'androidx.test:rules:1.2.0'
 
-    def rsVersion = '2.34.0' // Change string to bump version
+    def rsVersion = '2.34.0-ftc265' // Change string to bump version
     downloadSo 'com.intel.realsense:librealsense:' + rsVersion + '@aar'
     implementation 'com.intel.realsense:librealsense:' + rsVersion + '@aar'
     downloadHeader 'com.intel.realsense:librealsense:' + rsVersion + '@zip'
