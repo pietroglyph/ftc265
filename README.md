@@ -68,8 +68,41 @@ If that doesn't convince you, please take the following into account:
 ### Is the T265 accurate in an FTC context?
 In my testing, yes. I used this in-season at (more demanding) FRC speeds, and when testing on an FTC-field-sized area I consistiently got less than 1 inch of error.
 
+### Why use VSLAM?
+ 1. The T265 is smaller and easier to mount and maintain than sprung odometry wheels. It is also likely more accurate.
+ 2. Awards.
+
 ### Is this compatible with the REV Control Hub?
 I don't know. On normal Android devices the user must allow access to the T265 by tappong on onscreen prompts, which might present a problem with the control hub. Please contact me if you've tested on the Control Hub or if you're interested in testing (I am pietroglyph#9445 on the FTC and FRC Discords.)
 
 ### Does this support importing and exporting relocalization maps?
 Yes.
+
+### Why do you use FTCLib geometry classes instead of library X's geometry classes?
+Unfortunately, there is no canonical set of geometry classes (`Pose2d`, `Transform2d`, etc.) in FTC so I just had to pick a set to use. I prefer the FTCLib geometry classes because they're directly copied from WPILib (which I'm quite familiar with.) I also think that these WPILib-style geometry classes are better than the alternatives.
+
+### How did you make this work?
+I had to write JNI bindings to C++ librealsense because no Java bindings exist for the T265. Then I had to patch librealsense to get around some bugs and Android incompatibilities (especially related to the maximum size for USB bulk transfers and the list of USB VID/PID combos); this is why I distribute a custom version of librealsense.
+
+### Can I contribute?
+Yes. Please report bugs or (even better) make a PR. FTC is not my main focus, and I will soon lose access to my team's T265 camera, so I would appreciate it if any nontrivial PRs are accompanied by a test on real hardware.
+
+### Will you support this into the future?
+This is contingent on the community's response and Intel's actions. If ftc265 becomes popular then I will continue to support it as best I can into the future until Intel provides a reasonable alternative. Please note that I have limited time and that FTC is not my main focus; I will endevor to fix issues and respond to you as fast as possible, but expect the standard deviation on my response time to be high :)
+
+## License
+
+Copyright 2020 Declan Freeman-Gleason
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this program.  If not, see <https://www.gnu.org/licenses/>.
