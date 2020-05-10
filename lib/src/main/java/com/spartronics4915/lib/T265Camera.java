@@ -1,12 +1,14 @@
 package com.spartronics4915.lib;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.arcrobotics.ftclib.geometry.Pose2d;
 import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.geometry.Transform2d;
 import com.arcrobotics.ftclib.geometry.Twist2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
+import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.RsContext;
 
 import java.util.function.Consumer;
@@ -33,7 +35,7 @@ public class T265Camera {
 
     static {
         try {
-            System.out.println("[ftc265] Attempting to load native code");
+            Log.d("[ftc265]", "Attempting to load native code");
 
             System.loadLibrary("ftc265");
 
@@ -44,7 +46,7 @@ public class T265Camera {
             // best option.
             Runtime.getRuntime().addShutdownHook(new Thread(() -> T265Camera.cleanup()));
         } catch (UnsatisfiedLinkError e) {
-            System.out.println("[ftc265] Failed to load native code: " + e.getLocalizedMessage());
+            Log.e("[ftc265]", "Failed to load native code: " + e.getLocalizedMessage());
             mLinkError = e;
         }
     }
@@ -111,11 +113,32 @@ public class T265Camera {
 
         RsContext.init(appContext);
 
-        mNativeCameraObjectPointer = newCamera(relocMapPath);
-        setOdometryInfo((float) robotOffsetMeters.getTranslation().getX(),
-                (float) robotOffsetMeters.getTranslation().getY(),
-                (float) robotOffsetMeters.getRotation().getRadians(), odometryCovariance);
-        mRobotOffset = robotOffsetMeters;
+        RsContext rsCtx = new RsContext();
+        rsCtx.setDevicesChangedCallback(new DeviceListener() {
+            @Override
+            public void onDeviceAttach() {
+                Log.i("[ftc265]", "onDeviceAttached called... Will attempt to handoff to native code.");
+
+                // It appears that it takes a little while for Android to decide to give us permissions.
+                // This allows us to wait until everything is ready so that we can hand off to the native code.
+                // It is anticipated that this will cause issues if the user has constructed multiple T265 objects,
+                // because they will all try to "claim" the recently attached device.
+
+                mNativeCameraObjectPointer = newCamera(relocMapPath);
+                setOdometryInfo((float) robotOffsetMeters.getTranslation().getX(),
+                        (float) robotOffsetMeters.getTranslation().getY(),
+                        (float) robotOffsetMeters.getRotation().getRadians(), odometryCovariance);
+                mRobotOffset = robotOffsetMeters;
+            }
+
+            @Override
+            public void onDeviceDetach() {
+                if (mNativeCameraObjectPointer != 0) {
+                    Log.i("[ftc265]", "onDeviceDetach called... Will attempt to free native objects.");
+                    free();
+                }
+            }
+        });
     }
 
     /**
@@ -140,7 +163,7 @@ public class T265Camera {
     }
 
     /**
-     * This allows the callback to receivez data, but it does not internally stop the
+     * This allows the callback to receive data, but it does not internally stop the
      * camera.
      */
     public synchronized void stop() {
