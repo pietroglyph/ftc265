@@ -9,6 +9,7 @@ import com.arcrobotics.ftclib.geometry.Transform2d;
 import com.arcrobotics.ftclib.geometry.Twist2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 import com.intel.realsense.librealsense.DeviceListener;
+import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
 
 import java.util.function.Consumer;
@@ -113,16 +114,14 @@ public class T265Camera {
 
         RsContext.init(appContext);
 
-        RsContext rsCtx = new RsContext();
-        rsCtx.setDevicesChangedCallback(new DeviceListener() {
+        DeviceListener callback = new DeviceListener() {
             @Override
             public void onDeviceAttach() {
-                Log.i("[ftc265]", "onDeviceAttached called... Will attempt to handoff to native code.");
+                if (mNativeCameraObjectPointer != 0) {
+                    return;
+                }
 
-                // It appears that it takes a little while for Android to decide to give us permissions.
-                // This allows us to wait until everything is ready so that we can hand off to the native code.
-                // It is anticipated that this will cause issues if the user has constructed multiple T265 objects,
-                // because they will all try to "claim" the recently attached device.
+                Log.i("[ftc265]", "onDeviceAttached called... Will attempt to handoff to native code.");
 
                 mNativeCameraObjectPointer = newCamera(relocMapPath);
                 setOdometryInfo((float) robotOffsetMeters.getTranslation().getX(),
@@ -133,12 +132,22 @@ public class T265Camera {
 
             @Override
             public void onDeviceDetach() {
+                // Unfortunately we don't get any information about the detaching device, which means
+                // that any rs device detaching will detach *all* other devices.
+                // This is one of the few blockers for multi-device support.
                 if (mNativeCameraObjectPointer != 0) {
                     Log.i("[ftc265]", "onDeviceDetach called... Will attempt to free native objects.");
                     free();
                 }
             }
-        });
+        };
+        RsContext rsCtx = new RsContext();
+        rsCtx.setDevicesChangedCallback(callback);
+
+        // If the device is already attached then the callback doesn't get fired
+        if (rsCtx.queryDevices(ProductLine.T200).getDeviceCount() > 0) {
+            callback.onDeviceAttach();
+        }
     }
 
     /**

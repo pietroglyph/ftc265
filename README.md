@@ -15,7 +15,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.spartronics4915.lib:ftc265:1.0.0'
+    // This will get the latest compatible version
+    implementation 'com.spartronics4915.lib:ftc265:1.+'
 }
 ```
 
