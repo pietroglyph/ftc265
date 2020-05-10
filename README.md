@@ -69,7 +69,7 @@ If that doesn't convince you, please take the following into account:
 In my testing, yes. I used this in-season at (more demanding) FRC speeds, and when testing on an FTC-field-sized area I consistiently got less than 1 inch of error.
 
 ### Why use VSLAM?
- 1. The T265 is smaller and easier to mount and maintain than sprung odometry wheels. It is also likely more accurate.
+ 1. The T265 is smaller and easier to mount and maintain than sprung odometry wheels. It is also likely as accurate.
  2. Awards.
 
 ### Is this compatible with the REV Control Hub?
