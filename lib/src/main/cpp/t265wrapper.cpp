@@ -1,4 +1,5 @@
 #include "t265wrapper.hpp"
+
 #include <vector>
 #include <fstream>
 #include <iterator>
@@ -9,12 +10,15 @@
 #include <cstring>
 #include <algorithm>
 
+#include <android/log.h>
+
 // We use jlongs like pointers, so they better be large enough
 static_assert(sizeof(jlong) >= sizeof(void *));
 
 // Constants
 constexpr auto originNodeName = "origin";
 constexpr auto exportRelocMapStopDelay = std::chrono::seconds(10);
+constexpr auto logTag = "[ftc265]";
 
 // We cache all of these because we can
 jclass holdingClass = nullptr;    // This should always be T265Camera jclass
@@ -88,12 +92,12 @@ JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
     JNIEnv* env;
     if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
-        std::cerr << "[ftc265] Native code initialization failed! Wrong JNI version.\n";
+        __android_log_print(ANDROID_LOG_ERROR, logTag, "Native code initialization failed! Wrong JNI version");
 
         return JNI_ERR;
     }
 
-    std::cout << "[ftc265] Native code initialized\n";
+    __android_log_print(ANDROID_LOG_INFO, logTag, "Native code initialized");
     return JNI_VERSION_1_6;
 }
 
@@ -102,6 +106,8 @@ JNIEXPORT jlong JNICALL
 Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj, jstring mapPath) {
     try
     {
+        rs2::context ctx;
+
         ensureCache(env, thisObj);
 
         deviceAndSensors *devAndSensors = nullptr;
@@ -206,7 +212,7 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj, 
                 if (env)
                     env->ThrowNew(exception, e.what());
                 else
-                    std::cerr << "Exception in frame consumer callback could not be thrown in Java code. Exception was: " << e.what() << "\n";
+                    __android_log_print(ANDROID_LOG_ERROR, logTag, "Exception in frame consumer callback could not be thrown in Java code. Exception was: %s", e.what());
             }
         };
 
@@ -215,6 +221,8 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj, 
 
         std::lock_guard<std::mutex> lock(tbcMutex);
         toBeCleaned.push_back(devAndSensors);
+
+        __android_log_print(ANDROID_LOG_INFO, logTag, "Successfully initialized tracking device");
 
         return reinterpret_cast<jlong>(devAndSensors);
     }
@@ -292,7 +300,7 @@ Java_com_spartronics4915_lib_T265Camera_exportRelocalizationMap(JNIEnv *env, job
 
         env->ReleaseStringUTFChars(savePath, pathNativeStr);
 
-        std::cout << "[ftc265] Relocalization map exported\n";
+        __android_log_print(ANDROID_LOG_INFO, logTag, "Relocalization map exported");
 
         // TODO: Camera never gets started again...
         // If we try to call pipeline->start() it doesn't work. Bug in librealsense?
@@ -393,7 +401,7 @@ Java_com_spartronics4915_lib_T265Camera_cleanup(JNIEnv *env, jclass)
         
         // We use std::endl because we *want* to flush the buffer
         // (The program is about to exit and messages get lost)
-        std::cout << "[ftc265] T265 native wrapper gracefully shut down" << std::endl;
+        __android_log_print(ANDROID_LOG_INFO, logTag, "Native wrapper successfully shut down");
     }
     catch (std::exception &e)
     {
