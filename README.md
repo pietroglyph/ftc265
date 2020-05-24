@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     // This will get the latest compatible version
-    implementation 'com.spartronics4915.lib:ftc265:1.+'
+    implementation 'com.spartronics4915.lib:ftc265:2.0.0'
 }
 ```
 
@@ -28,34 +28,26 @@ Basic usage is as follows:
 ```java
 // This is the transformation between the center of the camera and the center of the robot
 Transform2d cameraToRobot = new Transform2d();
-double encoderMeasurementCovariance = 0.8; // Increase this value to trust encoder odometry less when fusing encoder measurements with VSLAM
+// Increase this value to trust encoder odometry less when fusing encoder measurements with VSLAM
+double encoderMeasurementCovariance = 0.8;
+// Set to the starting pose of the robot
 Pose2d startingPose = new Pose2d(1, 1, new Rotation2d());
 
 T265Camera slamra = new T265Camera(cameraToRobot, encoderMeasurementCovariance);
 slamra.setPose(startingPose); // Useful if your robot doesn't start at the field-relative origin
 
 // Call this when you're ready to get camera updates
-Pose2d currentPose = startingPose;
-slamra.start((T265Camera.CameraUpdate camUpdate) -> {
-  // This is the callback for every camera pose update
-  // **This lambda is called from another thread. You must synchronize cross thread memory accesses!**
-
-  // We'll set a variable that can be accessed by other code
-  // "synchronized" is very important. Do not remove it (see above warning.)
-  synchronized (currentPose) {
-    currentPose = camUpdate.pose;
-  }
-});
+slamra.start();
 
 // Meanwhile we can grab the pose variable whenever we want in our main thread
 while (true) {
-    synchronized (currentPose) {
-        System.out.println(currentPose);
-    }
+    slamra.getLastReceivedCameraUpdate();
 }
 ```
 
 There is also a ready-to-use example project [here](https://github.com/pietroglyph/ftc_app/tree/ftc265_template).
+
+Please note that the above example uses the simple synchronous API. There is also a more advanced callback-based API available.
 
 ## FAQs
 
