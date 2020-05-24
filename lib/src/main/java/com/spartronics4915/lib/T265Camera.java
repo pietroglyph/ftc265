@@ -78,7 +78,7 @@ public class T265Camera {
     private boolean mIsStarted = false;
     private Transform2d mRobotOffset;
     private Pose2d mOrigin = new Pose2d();
-    private Pose2d mLastRecievedPose = new Pose2d();
+    private CameraUpdate mLastReceivedUpdate = null;
     private Consumer<CameraUpdate> mPoseConsumer = null;
 
     /**
@@ -151,12 +151,35 @@ public class T265Camera {
     }
 
     /**
-     * This allows the user-provided pose receive callback to receive data.
-     * This will also reset the camera's pose to (0, 0) at 0 degrees.
+     * This allows the {@link T265Camera#getLastReceivedCameraUpdate()} to start
+     * returning pose data. This will also reset the camera's pose to (0, 0) at 0
+     * degrees.
      * <p>
-     * This will not restart the camera following exportRelocalizationMap. You will
-     * have to call {@link T265Camera#free()} and make a new {@link T265Camera}.
-     * This is related to what appears to be a bug in librealsense.
+     * This will not restart the camera following
+     * {@link T265Camera#exportRelocalizationMap(String)}. You will have to call
+     * {@link T265Camera#free()} and make a new {@link T265Camera}. This is
+     * related to what appears to be a bug in librealsense.
+     */
+    public void start() {
+        start((update) -> {
+            synchronized (mLastReceivedUpdate) {
+                mLastReceivedUpdate = update;
+            }
+        });
+    }
+
+    /**
+     * This allows the user-provided pose receive callback to receive data.
+     * This will also reset the camera's pose to (0, 0) at 0 degrees. This
+     * is the advanced version of the start method; if you don't want to
+     * provide a callback and just want to call
+     * {@link T265Camera#getLastReceivedCameraUpdate()} instead then you
+     * should call {@link T265Camera#start()}.
+     * <p>
+     * This will not restart the camera following
+     * {@link T265Camera#exportRelocalizationMap(String)}. You will have to call
+     * {@link T265Camera#free()} and make a new {@link T265Camera}. This is
+     * related to what appears to be a bug in librealsense.
      *
      * @param poseConsumer A method to be called every time we receive a pose from
      *                     <i>from a different thread</i>! You must synchronize
@@ -167,8 +190,27 @@ public class T265Camera {
     public synchronized void start(Consumer<CameraUpdate> poseConsumer) {
         if (mIsStarted)
             throw new RuntimeException("T265 camera is already started");
+
+        synchronized (mLastReceivedUpdate) {
+            mLastReceivedUpdate = null;
+        }
+
         mPoseConsumer = poseConsumer;
         mIsStarted = true;
+    }
+
+    /**
+     * Gets the last received camera update, which includes the last received pose
+     * estimate.
+     *
+     * @return The last received camera update, or null if a custom callback was
+     * passed to {@link T265Camera#start(Consumer)}.
+     */
+    public CameraUpdate getLastReceivedCameraUpdate() {
+        synchronized (mLastReceivedUpdate) {
+            // Camera updates are immutable so this is ok
+            return mLastReceivedUpdate;
+        }
     }
 
     /**
@@ -235,8 +277,6 @@ public class T265Camera {
         final Pose2d currentPose = new Pose2d(x - mRobotOffset.getTranslation().getX(),
                 y - mRobotOffset.getTranslation().getY(), new Rotation2d(radians))
                 .transformBy(mRobotOffset);
-
-        mLastRecievedPose = currentPose;
 
         if (!mIsStarted)
             return;
