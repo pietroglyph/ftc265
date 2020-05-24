@@ -26,8 +26,8 @@ import java.util.function.Consumer;
  * giving us a third dimension (Z).
  * <p>
  * The coordinate system is as follows:
- * + X == Camera forwards
- * + Y == Camera Left (left is from the perspective of a viewer standing behind the camera)
+ * + X == Robot forwards
+ * + Y == Robot left (left is from the perspective of a viewer standing behind the robot)
  * <p>
  * All distance units are meters. All time units are seconds.
  */
@@ -231,15 +231,19 @@ public class T265Camera {
     public native void exportRelocalizationMap(String path);
 
     /**
-     * Sends robot velocity as computed from wheel encoders.
+     * Sends robot velocity as computed from wheel encoders. Note that the X and Y
+     * axis orientations are determined by how you set the robotOffset in the
+     * constructor.
      *
-     * @param velocity The robot's translational velocity in meters/sec.
+     * @param velocityXMetersPerSecond The robot-relative velocity along the X axis
+     *                                 in meters/sec.
+     * @param velocityYMetersPerSecond The robot-relative velocity along the Y axis
+     *                                 in meters/sec.
      */
-    public void sendOdometry(Twist2d velocity) {
-        Pose2d transVel = new Pose2d().exp(velocity);
+    public void sendOdometry(double velocityXMetersPerSecond, double velocityYMetersPerSecond) {
         // Only 1 odometry sensor is supported for now (index 0)
-        sendOdometryRaw(0, (float) transVel.getTranslation().getX(),
-                (float) transVel.getTranslation().getY());
+        sendOdometryRaw(0, (float) velocityXMetersPerSecond,
+                (float) velocityYMetersPerSecond);
     }
 
     /**

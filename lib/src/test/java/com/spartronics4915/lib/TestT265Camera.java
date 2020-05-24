@@ -38,7 +38,7 @@
              cam = new T265Camera(new Transform2d(), 0, context);
 
              // Just make sure this doesn't throw
-             cam.sendOdometry(new Twist2d(0, 0, 0));
+             cam.sendOdometry(0, 0);
 
              cam.start((T265Camera.CameraUpdate update) ->
              {
