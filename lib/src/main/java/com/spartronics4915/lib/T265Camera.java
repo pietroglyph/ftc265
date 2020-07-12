@@ -78,6 +78,8 @@ public class T265Camera {
     private boolean mIsStarted = false;
     private Transform2d mRobotOffset;
     private Pose2d mOrigin = new Pose2d();
+
+    private final Object kLastReceivedUpdateMutex = new Object();
     private CameraUpdate mLastReceivedUpdate = null;
     private Consumer<CameraUpdate> mPoseConsumer = null;
 
@@ -162,7 +164,7 @@ public class T265Camera {
      */
     public void start() {
         start((update) -> {
-            synchronized (mLastReceivedUpdate) {
+            synchronized (kLastReceivedUpdateMutex) {
                 mLastReceivedUpdate = update;
             }
         });
@@ -191,7 +193,7 @@ public class T265Camera {
         if (mIsStarted)
             throw new RuntimeException("T265 camera is already started");
 
-        synchronized (mLastReceivedUpdate) {
+        synchronized (kLastReceivedUpdateMutex) {
             mLastReceivedUpdate = null;
         }
 
@@ -207,7 +209,7 @@ public class T265Camera {
      * passed to {@link T265Camera#start(Consumer)}.
      */
     public CameraUpdate getLastReceivedCameraUpdate() {
-        synchronized (mLastReceivedUpdate) {
+        synchronized (kLastReceivedUpdateMutex) {
             // Camera updates are immutable so this is ok
             return mLastReceivedUpdate;
         }
