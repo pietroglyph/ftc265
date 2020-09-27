@@ -68,7 +68,7 @@ configurations {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation 'com.arcrobotics:ftclib:2.0.11' // For geometry classes
+    implementation 'com.arcrobotics:ftclib:1.0.1' // For geometry classes
 
     testImplementation 'junit:junit:4.12'
 
