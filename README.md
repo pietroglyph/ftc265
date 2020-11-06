@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     // This will get the latest compatible version
-    implementation 'com.spartronics4915.lib:ftc265:2.0.1'
+    implementation 'com.spartronics4915.lib:ftc265:2.1.0'
 }
 ```
 
@@ -39,7 +39,7 @@ slamra.setPose(startingPose); // Useful if your robot doesn't start at the field
 // Call this when you're ready to get camera updates
 slamra.start();
 
-// Meanwhile we can grab the pose variable whenever we want in our main thread
+// Now we can grab our last received pose in our main thread
 while (true) {
     slamra.getLastReceivedCameraUpdate();
 }
