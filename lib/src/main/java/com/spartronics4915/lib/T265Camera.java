@@ -12,6 +12,7 @@ import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
 
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.Consumer;
 
 /**
@@ -79,8 +80,7 @@ public class T265Camera {
     private Transform2d mRobotOffset;
     private Pose2d mOrigin = new Pose2d();
 
-    private final Object kLastReceivedUpdateMutex = new Object();
-    private CameraUpdate mLastReceivedUpdate = null;
+    private ArrayBlockingQueue<CameraUpdate> mLastReceivedUpdateQueue = new ArrayBlockingQueue<>(1);
     private Consumer<CameraUpdate> mPoseConsumer = null;
 
     /**
@@ -164,9 +164,8 @@ public class T265Camera {
      */
     public void start() {
         start((update) -> {
-            synchronized (kLastReceivedUpdateMutex) {
-                mLastReceivedUpdate = update;
-            }
+            mLastReceivedUpdateQueue.clear();
+            mLastReceivedUpdateQueue.add(update);
         });
     }
 
@@ -193,25 +192,25 @@ public class T265Camera {
         if (mIsStarted)
             throw new RuntimeException("T265 camera is already started");
 
-        synchronized (kLastReceivedUpdateMutex) {
-            mLastReceivedUpdate = null;
-        }
+        mLastReceivedUpdateQueue.clear();
 
         mPoseConsumer = poseConsumer;
         mIsStarted = true;
     }
 
     /**
-     * Gets the last received camera update, which includes the last received pose
+     * Blocks until a new camera update comes in. The camera update will include the latest pose
      * estimate.
      *
      * @return The last received camera update, or null if a custom callback was
      * passed to {@link T265Camera#start(Consumer)}.
      */
     public CameraUpdate getLastReceivedCameraUpdate() {
-        synchronized (kLastReceivedUpdateMutex) {
-            // Camera updates are immutable so this is ok
-            return mLastReceivedUpdate;
+        try {
+            return mLastReceivedUpdateQueue.take();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
