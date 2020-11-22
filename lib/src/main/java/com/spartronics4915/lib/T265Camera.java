@@ -80,7 +80,8 @@ public class T265Camera {
     private Transform2d mRobotOffset;
     private Pose2d mOrigin = new Pose2d();
 
-    private ArrayBlockingQueue<CameraUpdate> mLastReceivedUpdateQueue = new ArrayBlockingQueue<>(1);
+    private final Object mUpdateMutex = new Object();
+    private CameraUpdate mLastRecievedUpdate = null;
     private Consumer<CameraUpdate> mPoseConsumer = null;
 
     /**
@@ -114,6 +115,7 @@ public class T265Camera {
             throw mLinkError;
         }
 
+        Log.d("[ftc265]", "Initializing RsContext and asking for permissions...");
         RsContext.init(appContext);
 
         DeviceListener callback = new DeviceListener() {
@@ -142,14 +144,23 @@ public class T265Camera {
                     free();
                 }
             }
+
+            @Override
+            public boolean equals(Object obj) {
+                return false;
+            }
         };
         RsContext rsCtx = new RsContext();
-        rsCtx.setDevicesChangedCallback(callback);
 
         // If the device is already attached then the callback doesn't get fired
         if (rsCtx.queryDevices(ProductLine.T200).getDeviceCount() > 0) {
+            Log.d("[ftc265]",  "Device was already attached; firing onDeviceAttach manually.");
             callback.onDeviceAttach();
         }
+
+        Log.d("[ftc265]", "Setting device change callback.");
+        rsCtx.setDevicesChangedCallback(callback);
+        Log.d("[ftc265]", "Finished init successfully.");
     }
 
     /**
@@ -164,8 +175,9 @@ public class T265Camera {
      */
     public void start() {
         start((update) -> {
-            mLastReceivedUpdateQueue.clear();
-            mLastReceivedUpdateQueue.add(update);
+            synchronized (mUpdateMutex) {
+                mLastRecievedUpdate = update;
+            }
         });
     }
 
@@ -191,8 +203,12 @@ public class T265Camera {
     public synchronized void start(Consumer<CameraUpdate> poseConsumer) {
         if (mIsStarted)
             throw new RuntimeException("T265 camera is already started");
+        else if (mNativeCameraObjectPointer == 0)
+            throw new RuntimeException("No camera connected");
 
-        mLastReceivedUpdateQueue.clear();
+        synchronized (mUpdateMutex) {
+            mLastRecievedUpdate = null;
+        }
 
         mPoseConsumer = poseConsumer;
         mIsStarted = true;
@@ -206,11 +222,12 @@ public class T265Camera {
      * passed to {@link T265Camera#start(Consumer)}.
      */
     public CameraUpdate getLastReceivedCameraUpdate() {
-        try {
-            return mLastReceivedUpdateQueue.take();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return null;
+        synchronized (mUpdateMutex) {
+            if (mLastRecievedUpdate == null) {
+                Log.w("[ftc265]", "Attempt to get last received update before any updates have been received; are you using the wrong T265Camera::start overload?");
+                return new CameraUpdate(new Pose2d(), new ChassisSpeeds(), PoseConfidence.Failed);
+            }
+            return mLastRecievedUpdate;
         }
     }
 
