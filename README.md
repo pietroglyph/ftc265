@@ -33,7 +33,7 @@ double encoderMeasurementCovariance = 0.8;
 // Set to the starting pose of the robot
 Pose2d startingPose = new Pose2d(1, 1, new Rotation2d());
 
-T265Camera slamra = new T265Camera(cameraToRobot, encoderMeasurementCovariance);
+T265Camera slamra = new T265Camera(cameraToRobot, encoderMeasurementCovariance, hardwareMap.appContext);
 slamra.setPose(startingPose); // Useful if your robot doesn't start at the field-relative origin
 
 // Call this when you're ready to get camera updates
@@ -48,6 +48,20 @@ while (true) {
 There is also a ready-to-use example project [here](https://github.com/pietroglyph/ftc_app/tree/ftc265_template).
 
 Please note that the above example uses the simple synchronous API. There is also a more advanced callback-based API available.
+
+## Troubleshooting
+
+### My camera doesn't connect
+If you're getting a "No camera connected" exception then you can try a few things:
+ 1. Connect the camera to a computer running realsense-viewer and make sure that it works there.
+ 2. If you're using a USB hub, make sure to plug the hub in first, power the hub on (if applicable), and then connect the camera.
+ 3. If nothing works then you can open an issue or contact me on Discord (I'm pietroglyph#9445) and send me your app logs.
+
+### The app hangs when I instantiate a `T265Camera`
+This is likely happening because you haven't granted the correct permissions. The easiest way to get a permissions prompt is to uninstall and reinstall the robot controller app. After reinstalling you should get a permissions prompt on first run.
+
+### I'm only getting estimated poses of (0, 0)
+It's possible that you used the wrong overload of `start`. If you used the overload of the `start` method that takes a `Consumer<CameraUpdate>` (a camera update callback) then you won't be able to use `getLastRecievedCameraUpdate` unless you use the overload of `start` that takes no parameters.
 
 ## FAQs
 
