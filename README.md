@@ -80,7 +80,7 @@ In my testing, yes. I used this in-season at (more demanding) FRC speeds, and wh
  2. Awards.
 
 ### Is this compatible with the REV Control Hub?
-I don't know. On normal Android devices the user must allow access to the T265 by tappong on onscreen prompts, which might present a problem with the control hub. Please contact me if you've tested on the Control Hub or if you're interested in testing (I am pietroglyph#9445 on the FTC and FRC Discords.)
+Yes. This should work out of the box on the Control Hub.
 
 ### Does this support importing and exporting relocalization maps?
 Yes.
