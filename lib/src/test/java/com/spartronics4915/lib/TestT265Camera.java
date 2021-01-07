@@ -22,7 +22,7 @@
      private boolean mDataRecieved = false;
      private final Object mLock = new Object();
 
-     private Context context = ApplicationProvider.getApplicationContext();
+     private final Context context = ApplicationProvider.getApplicationContext();
 
      @Ignore
      @Test
