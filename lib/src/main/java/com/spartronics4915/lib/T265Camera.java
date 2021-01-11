@@ -11,6 +11,7 @@ import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
+import com.intel.realsense.librealsense.UsbUtilities;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.Consumer;
@@ -117,6 +118,7 @@ public class T265Camera {
 
         Log.d("[ftc265]", "Initializing RsContext and asking for permissions...");
         RsContext.init(appContext);
+        UsbUtilities.grantUsbPermissionIfNeeded(appContext);
 
         DeviceListener callback = new DeviceListener() {
             @Override
