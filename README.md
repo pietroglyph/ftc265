@@ -3,21 +3,43 @@
 ftc265 is a plug-and-play Intel RealSense T265 VSLAM camera wrapper for FTC based off my work in FRC writing a [roboRIO T265 wrapper](https://github.com/Spartronics4915/SpartronicsLib).
 
 ## Installation
+To get started you can either copy the [example project](https://github.com/pietroglyph/FtcRobotController/tree/ftc265-example), or you can install manually.
+
+### Manual Installation
 Paste the following into `TeamCode/build.gradle`:
 
 ```gradle
 repositories {
-    jcenter()
-
-    maven {
-        url "https://maven.0x778.tk"
-    }
+    // This line will already be here; you do not need to add it
+    maven { url = "https://dl.bintray.com/first-tech-challenge/ftcsdk/" }
+    // Add this line
+    maven { url = "https://0x778.tk" }
 }
+```
 
+And then paste the following into `TeamCode/build.release.gradle`:
+```gradle
 dependencies {
-    // This will get the latest compatible version
-    implementation 'com.spartronics4915.lib:ftc265:2.1.2'
+    // There should be a bunch of implementation configurations here already
+
+    implementation 'com.spartronics4915.lib:ftc265:2.1.3'
 }
+```
+
+Finally, set the `sourceCompatibility`, `targetCompatibility`, and `minSdkVersion` in the root `build.common.gradle` if you haven't already:
+```gradle
+android {
+    // NOTE: There will be *way* more things in this file than what's shown here.
+    // The blocks shown here should already exist, and you'll only need to change these three shown parameters.
+
+    defaultConfig {
+        minSdkVersion 24
+    }
+ 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 ```
 
 You'll need to perform a Gradle sync in Android studio (if you use that IDE) after adding the new repositories and dependencies.
@@ -45,7 +67,7 @@ while (true) {
 }
 ```
 
-There is also a ready-to-use example project [here](https://github.com/pietroglyph/ftc_app/tree/ftc265_template).
+There is also a ready-to-use example project [here](https://github.com/pietroglyph/FtcRobotController/tree/ftc265-example).
 
 Please note that the above example uses the simple synchronous API. There is also a more advanced callback-based API available.
 
