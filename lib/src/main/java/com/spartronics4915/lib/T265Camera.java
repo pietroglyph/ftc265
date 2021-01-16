@@ -115,9 +115,6 @@ public class T265Camera {
             throw mLinkError;
         }
 
-        Log.d("[ftc265]", "Initializing RsContext and asking for permissions...");
-        RsContext.init(appContext);
-
         DeviceListener callback = new DeviceListener() {
             @Override
             public void onDeviceAttach() {
@@ -150,17 +147,9 @@ public class T265Camera {
                 return false;
             }
         };
-        RsContext rsCtx = new RsContext();
 
-        // If the device is already attached then the callback doesn't get fired
-        if (rsCtx.queryDevices(ProductLine.T200).getDeviceCount() > 0) {
-            Log.d("[ftc265]",  "Device was already attached; firing onDeviceAttach manually.");
-            callback.onDeviceAttach();
-        }
-
-        Log.d("[ftc265]", "Setting device change callback.");
-        rsCtx.setDevicesChangedCallback(callback);
-        Log.d("[ftc265]", "Finished init successfully.");
+        Log.d("[ftc265]", "Initializing RsContext and asking for permissions...");
+        RsContext.init(appContext, callback);
     }
 
     /**
