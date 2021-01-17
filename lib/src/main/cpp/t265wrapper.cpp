@@ -117,7 +117,7 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj,
     deviceAndSensors *devAndSensors = nullptr;
     try {
       devAndSensors = getDeviceFromClass(env, thisObj);
-    } catch (std::runtime_error) {
+    } catch (std::runtime_error &) {
     }
     if (devAndSensors && devAndSensors->isRunning)
       throw std::runtime_error("Can't make a new camera if the calling class "
@@ -142,7 +142,7 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj,
     // For the T265 both odom and pose will be from the *same* sensor
     rs2::wheel_odometer *odom = nullptr;
     rs2::pose_sensor *pose = nullptr;
-    for (const auto sensor : device.query_sensors()) {
+    for (const auto &sensor : device.query_sensors()) {
       if (sensor.is<rs2::wheel_odometer>())
         pose = new rs2::pose_sensor(sensor);
       if (sensor.is<rs2::pose_sensor>())
