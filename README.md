@@ -22,7 +22,7 @@ And then paste the following into `TeamCode/build.release.gradle`:
 dependencies {
     // There should be a bunch of implementation configurations here already
 
-    implementation 'com.spartronics4915.lib:ftc265:2.1.3'
+    implementation 'com.spartronics4915.lib:ftc265:2.1.4'
 }
 ```
 
@@ -77,7 +77,8 @@ Please note that the above example uses the simple synchronous API. There is als
 If you're getting a "No camera connected" exception then you can try a few things:
  1. Connect the camera to a computer running realsense-viewer and make sure that it works there.
  2. If you're using a USB hub, make sure to plug the hub in first, power the hub on (if applicable), and then connect the camera.
- 3. If nothing works then you can open an issue or contact me on Discord (I'm pietroglyph#9445) and send me your app logs.
+ 3. If you're using the Control Hub and your camera won't connect when you first boot up, try plugging the camera into the USB 2 port on subsequent boots.
+ 4. If nothing works then you can open an issue or contact me on Discord (I'm pietroglyph#9445) and send me your app logs.
 
 ### The app hangs when I instantiate a `T265Camera`
 This is likely happening because you haven't granted the correct permissions. The easiest way to get a permissions prompt is to uninstall and reinstall the robot controller app. After reinstalling you should get a permissions prompt on first run.

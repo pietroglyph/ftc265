@@ -14,8 +14,8 @@ android {
     defaultConfig {
         minSdkVersion 24
         targetSdkVersion 29
-        versionCode 7 // This number just needs to increase monotonically after every version change
-        versionName "2.1.3"
+        versionCode 8 // This number just needs to increase monotonically after every version change
+        versionName "2.1.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
