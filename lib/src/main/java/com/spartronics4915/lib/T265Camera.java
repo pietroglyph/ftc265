@@ -6,13 +6,12 @@ import android.util.Log;
 import com.arcrobotics.ftclib.geometry.Pose2d;
 import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.geometry.Transform2d;
-import com.arcrobotics.ftclib.geometry.Twist2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 import com.intel.realsense.librealsense.DeviceListener;
-import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
 
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 /**
@@ -33,11 +32,13 @@ import java.util.function.Consumer;
  * All distance units are meters. All time units are seconds.
  */
 public class T265Camera {
+    private static final String kLogTag = "ftc265";
+
     private static UnsatisfiedLinkError mLinkError = null;
 
     static {
         try {
-            Log.d("[ftc265]", "Attempting to load native code");
+            Log.d(kLogTag, "Attempting to load native code");
 
             System.loadLibrary("ftc265");
 
@@ -46,9 +47,9 @@ public class T265Camera {
             // Even worse, trying to cleanup with atexit in the native code is too late and
             // results in unfinished callbacks blocking. As a result a shutdown hook is our
             // best option.
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> T265Camera.cleanup()));
+            Runtime.getRuntime().addShutdownHook(new Thread(T265Camera::cleanup));
         } catch (UnsatisfiedLinkError e) {
-            Log.e("[ftc265]", "Failed to load native code: " + e.getLocalizedMessage());
+            Log.e(kLogTag, "Failed to load native code", e);
             mLinkError = e;
         }
     }
@@ -75,7 +76,11 @@ public class T265Camera {
         }
     }
 
+    private final Lock mInitWaitMutex = new ReentrantLock();
+    private final Object mPointerMutex = new Object();
+    private boolean mHasInitedSuccessfullyBefore = false;
     private long mNativeCameraObjectPointer = 0;
+
     private boolean mIsStarted = false;
     private Transform2d mRobotOffset;
     private Pose2d mOrigin = new Pose2d();
@@ -118,17 +123,31 @@ public class T265Camera {
         DeviceListener callback = new DeviceListener() {
             @Override
             public void onDeviceAttach() {
-                if (mNativeCameraObjectPointer != 0) {
-                    return;
+                mInitWaitMutex.lock();
+                try {
+                    // This check assumes that there's only one camera
+                    synchronized (mPointerMutex) {
+                        if (mNativeCameraObjectPointer != 0) {
+                            return;
+                        }
+                    }
+
+                    Log.i(kLogTag, "onDeviceAttached called... Will attempt to handoff to native code.");
+
+                    long ptr = newCamera(relocMapPath);
+                    synchronized (mPointerMutex) {
+                        if (ptr != 0) mHasInitedSuccessfullyBefore = true;
+                        mNativeCameraObjectPointer = ptr;
+                    }
+                    setOdometryInfo((float) robotOffsetMeters.getTranslation().getX(),
+                            (float) robotOffsetMeters.getTranslation().getY(),
+                            (float) robotOffsetMeters.getRotation().getRadians(), odometryCovariance);
+                    mRobotOffset = robotOffsetMeters;
+
+                    Log.i(kLogTag, "Native code should be done initializing");
+                } finally {
+                    mInitWaitMutex.unlock();
                 }
-
-                Log.i("[ftc265]", "onDeviceAttached called... Will attempt to handoff to native code.");
-
-                mNativeCameraObjectPointer = newCamera(relocMapPath);
-                setOdometryInfo((float) robotOffsetMeters.getTranslation().getX(),
-                        (float) robotOffsetMeters.getTranslation().getY(),
-                        (float) robotOffsetMeters.getRotation().getRadians(), odometryCovariance);
-                mRobotOffset = robotOffsetMeters;
             }
 
             @Override
@@ -137,7 +156,7 @@ public class T265Camera {
                 // that any rs device detaching will detach *all* other devices.
                 // This is one of the few blockers for multi-device support.
                 if (mNativeCameraObjectPointer != 0) {
-                    Log.i("[ftc265]", "onDeviceDetach called... Will attempt to free native objects.");
+                    Log.i(kLogTag, "onDeviceDetach called... Will attempt to free native objects.");
                     free();
                 }
             }
@@ -148,19 +167,20 @@ public class T265Camera {
             }
         };
 
-        Log.d("[ftc265]", "Initializing RsContext and asking for permissions...");
+        Log.d(kLogTag, "Initializing RsContext and asking for permissions...");
         RsContext.init(appContext, callback);
     }
 
     /**
      * This allows the {@link T265Camera#getLastReceivedCameraUpdate()} to start
-     * returning pose data. This will also reset the camera's pose to (0, 0) at 0
-     * degrees.
+     * returning pose data. This will NOT reset the camera's pose.
      * <p>
      * This will not restart the camera following
      * {@link T265Camera#exportRelocalizationMap(String)}. You will have to call
      * {@link T265Camera#free()} and make a new {@link T265Camera}. This is
      * related to what appears to be a bug in librealsense.
+     *
+     * @throws RuntimeException This will throw if the camera isn't connected or the camera has already been started.
      */
     public void start() {
         start((update) -> {
@@ -172,9 +192,8 @@ public class T265Camera {
 
     /**
      * This allows the user-provided pose receive callback to receive data.
-     * This will also reset the camera's pose to (0, 0) at 0 degrees. This
-     * is the advanced version of the start method; if you don't want to
-     * provide a callback and just want to call
+     * This will NOT reset the camera's pose. This is the advanced version of the start method; if
+     * you don't want to provide a callback and just want to call
      * {@link T265Camera#getLastReceivedCameraUpdate()} instead then you
      * should call {@link T265Camera#start()}.
      * <p>
@@ -188,12 +207,22 @@ public class T265Camera {
      *                     memory access across threads!
      *                     <p>
      *                     Received poses are in meters.
+     * @throws RuntimeException This will throw if the camera isn't connected or the camera has already been started.
      */
     public synchronized void start(Consumer<CameraUpdate> poseConsumer) {
-        if (mIsStarted)
-            throw new RuntimeException("T265 camera is already started");
-        else if (mNativeCameraObjectPointer == 0)
-            throw new RuntimeException("No camera connected");
+        Log.d(kLogTag, "Trying to start camera callback");
+
+        synchronized (mPointerMutex) {
+            if (mIsStarted)
+                throw new RuntimeException("Camera is already started");
+            else if (mNativeCameraObjectPointer == 0 && mInitWaitMutex.tryLock()) {
+                try {
+                    throw new RuntimeException("No camera connected");
+                } finally {
+                    mInitWaitMutex.unlock();
+                }
+            }
+        }
 
         synchronized (mUpdateMutex) {
             mLastRecievedUpdate = null;
@@ -201,6 +230,8 @@ public class T265Camera {
 
         mPoseConsumer = poseConsumer;
         mIsStarted = true;
+
+        Log.d(kLogTag, "Camera callback should be started");
     }
 
     /**
@@ -209,11 +240,25 @@ public class T265Camera {
      *
      * @return The last received camera update, or null if a custom callback was
      * passed to {@link T265Camera#start(Consumer)}.
+     * @throws RuntimeException This may throw if the camera initialization fails or the camera became disconnected during initialization. It will not throw following one successful connection.
      */
     public CameraUpdate getLastReceivedCameraUpdate() {
+        synchronized (mPointerMutex) {
+            // Note that if we *have* successfully initialized before then we won't throw. This is a
+            // Good Thing because the camera might become disconnected during a match, and we want
+            // to try and reconnect and *not* throw in that case.
+            if (mNativeCameraObjectPointer == 0 && !mHasInitedSuccessfullyBefore && mInitWaitMutex.tryLock()) {
+                try {
+                    throw new RuntimeException("The camera is busy or became disconnected during initialization!");
+                } finally {
+                    mInitWaitMutex.unlock();
+                }
+            }
+        }
+
         synchronized (mUpdateMutex) {
             if (mLastRecievedUpdate == null) {
-                Log.w("[ftc265]", "Attempt to get last received update before any updates have been received; are you using the wrong T265Camera::start overload?");
+                Log.w(kLogTag, "Attempt to get last received update before any updates have been received; are you using the wrong T265Camera::start overload, or is the camera not initialized yet or busy?");
                 return new CameraUpdate(new Pose2d(), new ChassisSpeeds(), PoseConfidence.Failed);
             }
             return mLastRecievedUpdate;
@@ -221,10 +266,16 @@ public class T265Camera {
     }
 
     /**
-     * This allows the callback to receive data, but it does not internally stop the
+     * This stops the callback from receiving data, but it does not internally stop the
      * camera.
      */
     public synchronized void stop() {
+        Log.d(kLogTag, "Stopping camera callback");
+
+        synchronized (mPointerMutex) {
+            mHasInitedSuccessfullyBefore = false;
+        }
+
         mIsStarted = false;
     }
 
@@ -248,6 +299,11 @@ public class T265Camera {
      *                                 in meters/sec.
      */
     public void sendOdometry(double velocityXMetersPerSecond, double velocityYMetersPerSecond) {
+        synchronized (mPointerMutex) {
+            if (mNativeCameraObjectPointer == 0)
+                Log.w(kLogTag, "Can't send odometry while camera is busy or not initialized yet");
+        }
+
         // Only 1 odometry sensor is supported for now (index 0)
         sendOdometryRaw(0, (float) velocityXMetersPerSecond,
                 (float) velocityYMetersPerSecond);
