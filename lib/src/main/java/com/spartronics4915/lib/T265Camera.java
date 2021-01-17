@@ -74,14 +74,18 @@ public class T265Camera {
     }
 
     private final Lock mInitWaitMutex = new ReentrantLock();
+
+    // Protected by mPointerMutex
     private final Object mPointerMutex = new Object();
     private boolean mHasInitedSuccessfullyBefore = false;
     private long mNativeCameraObjectPointer = 0;
 
+    // Protected by a mutex on this
     private boolean mIsStarted = false;
     private Transform2d mRobotOffset;
     private Pose2d mOrigin = new Pose2d();
 
+    // Protected by mUpdateMutex
     private final Object mUpdateMutex = new Object();
     private CameraUpdate mLastRecievedUpdate = null;
     private Consumer<CameraUpdate> mPoseConsumer = null;
@@ -146,23 +150,41 @@ public class T265Camera {
                                     odometryCovariance);
                             mRobotOffset = robotOffsetMeters;
 
-                            Log.i(kLogTag, "Native code should be done initializing");
+                            Log.d(kLogTag, "Native code should be done initializing");
+                        } catch (Exception e) {
+                            Log.e(
+                                    kLogTag,
+                                    "Exception while initializing camera (could be spurious if camera was initially presented as a generic Movidius device as part of the init process)",
+                                    e);
                         } finally {
+                            Log.d(kLogTag, "Unlocking init wait mutex");
                             mInitWaitMutex.unlock();
                         }
                     }
 
                     @Override
                     public void onDeviceDetach() {
-                        // Unfortunately we don't get any information about the detaching device,
-                        // which means
-                        // that any rs device detaching will detach *all* other devices.
-                        // This is one of the few blockers for multi-device support.
-                        if (mNativeCameraObjectPointer != 0) {
-                            Log.i(
-                                    kLogTag,
-                                    "onDeviceDetach called... Will attempt to free native objects.");
-                            free();
+                        Log.d(kLogTag, "onDeviceDetach called...");
+                        synchronized (mPointerMutex) {
+                            // If we can disconnect from a device then we've connected before and
+                            // should try and reconnect instead of throwing an error. This deals
+                            // with the case where the device presents as a generic Movidius device
+                            // and then disconnects and reconnects as a T265.
+                            synchronized (T265Camera.this) {
+                                mHasInitedSuccessfullyBefore |= mIsStarted;
+                            }
+
+                            // Unfortunately we don't get any information about the detaching
+                            // device,
+                            // which means
+                            // that any rs device detaching will detach *all* other devices.
+                            // This is one of the few blockers for multi-device support.
+                            if (mNativeCameraObjectPointer != 0) {
+                                Log.i(
+                                        kLogTag,
+                                        "onDeviceDetach called with non-null native pointer. Will attempt to free native objects.");
+                                free();
+                            }
                         }
                     }
 
