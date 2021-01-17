@@ -18,7 +18,7 @@ static_assert(sizeof(jlong) >= sizeof(void *));
 // Constants
 constexpr auto originNodeName = "origin";
 constexpr auto exportRelocMapStopDelay = std::chrono::seconds(10);
-constexpr auto logTag = "[ftc265]";
+constexpr auto logTag = "ftc265";
 
 // We cache all of these because we can
 jclass holdingClass = nullptr;    // This should always be T265Camera jclass
@@ -26,7 +26,7 @@ jfieldID handleFieldId = nullptr; // Field id for the field "nativeCameraObjectP
 jclass exception = nullptr;       // This is "CameraJNIException"
 
 std::vector<deviceAndSensors *> toBeCleaned;
-std::mutex tbcMutex;
+std::mutex cleanupMutex;
 
 /*
  * A note on coordinate systems:
@@ -104,6 +104,8 @@ JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj, jstring mapPath) {
+    std::scoped_lock lk(cleanupMutex);
+
     try
     {
         rs2::context ctx;
@@ -200,7 +202,7 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj, 
                         poseData.tracker_confidence
                 );
 
-                std::lock_guard<std::mutex> lock(devAndSensors->frameNumMutex);
+                std::scoped_lock lk(devAndSensors->frameNumMutex);
                 devAndSensors->lastRecvdFrameNum = frame.get_frame_number();
             }
             catch (std::exception &e)
@@ -219,7 +221,6 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj, 
         // Start streaming
         pipeline->start(config, consumerCallback);
 
-        std::lock_guard<std::mutex> lock(tbcMutex);
         toBeCleaned.push_back(devAndSensors);
 
         __android_log_print(ANDROID_LOG_INFO, logTag, "Successfully initialized tracking device");
@@ -252,7 +253,7 @@ Java_com_spartronics4915_lib_T265Camera_sendOdometryRaw(JNIEnv *env, jobject thi
         if (sensorId > UINT8_MAX || sensorId < 0)
             env->ThrowNew(exception, "sensorId is out of range of a 8-bit unsigned integer");
 
-        std::lock_guard<std::mutex> lock(devAndSensors->frameNumMutex);
+        std::scoped_lock lk(devAndSensors->frameNumMutex);
         devAndSensors->wheelOdometrySensor->send_wheel_odometry(sensorId, devAndSensors->lastRecvdFrameNum, rs2_vector{.x = -yVel, .y = 0.0, .z = -xVel});
     }
     catch (std::exception &e)
@@ -363,13 +364,14 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_spartronics4915_lib_T265Camera_free(JNIEnv *env, jobject thisObj)
 {
+    std::scoped_lock lk(cleanupMutex);
+
     try
     {
         ensureCache(env, thisObj);
 
         auto devAndSensors = getDeviceFromClass(env, thisObj);
 
-        std::lock_guard<std::mutex> lock(tbcMutex);
         toBeCleaned.erase(
             std::remove(toBeCleaned.begin(), toBeCleaned.end(), devAndSensors), toBeCleaned.end());
         env->DeleteGlobalRef(devAndSensors->globalThis);
@@ -387,9 +389,10 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_spartronics4915_lib_T265Camera_cleanup(JNIEnv *env, jclass)
 {
+    std::scoped_lock lk(cleanupMutex);
+
     try
     {
-        std::lock_guard<std::mutex> lock(tbcMutex);
         while (!toBeCleaned.empty())
         {
             auto back = toBeCleaned.back();
@@ -399,8 +402,6 @@ Java_com_spartronics4915_lib_T265Camera_cleanup(JNIEnv *env, jclass)
             toBeCleaned.pop_back();
         }
         
-        // We use std::endl because we *want* to flush the buffer
-        // (The program is about to exit and messages get lost)
         __android_log_print(ANDROID_LOG_INFO, logTag, "Native wrapper successfully shut down");
     }
     catch (std::exception &e)
