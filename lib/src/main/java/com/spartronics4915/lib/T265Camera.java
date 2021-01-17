@@ -2,34 +2,30 @@ package com.spartronics4915.lib;
 
 import android.content.Context;
 import android.util.Log;
-
 import com.arcrobotics.ftclib.geometry.Pose2d;
 import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.geometry.Transform2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.RsContext;
-
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 /**
- * Provides a convenient Java interface to the Intel RealSense
- * T265 V-SLAM camera. Only the subset of the librealsense that is useful
- * to robot tracking is exposed in this class.
- * <p>
- * We employ JNI to call librealsense. There <i>are</i> Java bindings for
- * librealsense, but they are not complete and do not support our usecase.
- * <p>
- * This class works entirely in 2d, even though the tracking camera supports
- * giving us a third dimension (Z).
- * <p>
- * The coordinate system is as follows:
- * + X == Robot forwards
- * + Y == Robot left (left is from the perspective of a viewer standing behind the robot)
- * <p>
- * All distance units are meters. All time units are seconds.
+ * Provides a convenient Java interface to the Intel RealSense T265 V-SLAM camera. Only the subset
+ * of the librealsense that is useful to robot tracking is exposed in this class.
+ *
+ * <p>We employ JNI to call librealsense. There <i>are</i> Java bindings for librealsense, but they
+ * are not complete and do not support our usecase.
+ *
+ * <p>This class works entirely in 2d, even though the tracking camera supports giving us a third
+ * dimension (Z).
+ *
+ * <p>The coordinate system is as follows: + X == Robot forwards + Y == Robot left (left is from the
+ * perspective of a viewer standing behind the robot)
+ *
+ * <p>All distance units are meters. All time units are seconds.
  */
 public class T265Camera {
     private static final String kLogTag = "ftc265";
@@ -43,7 +39,8 @@ public class T265Camera {
             System.loadLibrary("ftc265");
 
             // Cleanup is quite tricky for us, because the native code has no idea when Java
-            // will be done. (This is why smart pointers don't really make sense in the native code.)
+            // will be done. (This is why smart pointers don't really make sense in the native
+            // code.)
             // Even worse, trying to cleanup with atexit in the native code is too late and
             // results in unfinished callbacks blocking. As a result a shutdown hook is our
             // best option.
@@ -55,18 +52,18 @@ public class T265Camera {
     }
 
     public static enum PoseConfidence {
-        Failed, Low, Medium, High,
+        Failed,
+        Low,
+        Medium,
+        High,
     }
 
     public static class CameraUpdate {
-        /**
-         * The robot's pose in meters.
-         */
+        /** The robot's pose in meters. */
         public final Pose2d pose;
-        /**
-         * The robot's velocity in meters/sec and radians/sec.
-         */
+        /** The robot's velocity in meters/sec and radians/sec. */
         public final ChassisSpeeds velocity;
+
         public final PoseConfidence confidence;
 
         public CameraUpdate(Pose2d pose, ChassisSpeeds velocity, PoseConfidence confidence) {
@@ -90,131 +87,138 @@ public class T265Camera {
     private Consumer<CameraUpdate> mPoseConsumer = null;
 
     /**
-     * This method constructs a T265 camera and sets it up with the right info.
-     * {@link T265Camera#start start} will not be called, you must call it
-     * yourself.
+     * This method constructs a T265 camera and sets it up with the right info. {@link
+     * T265Camera#start start} will not be called, you must call it yourself.
      *
-     * @param robotOffset        Offset of the center of the robot from the center
-     *                           of the camera.
-     * @param odometryCovariance Covariance of the odometry input when doing
-     *                           sensor fusion (you probably want to tune this).
+     * @param robotOffset Offset of the center of the robot from the center of the camera.
+     * @param odometryCovariance Covariance of the odometry input when doing sensor fusion (you
+     *     probably want to tune this).
      */
     public T265Camera(Transform2d robotOffset, double odometryCovariance, Context appContext) {
         this(robotOffset, odometryCovariance, "", appContext);
     }
 
     /**
-     * This method constructs a T265 camera and sets it up with the right info.
-     * {@link T265Camera#start start} will not be called, you must call it
-     * yourself.
+     * This method constructs a T265 camera and sets it up with the right info. {@link
+     * T265Camera#start start} will not be called, you must call it yourself.
      *
-     * @param robotOffsetMeters  Offset of the center of the robot from the center
-     *                           of the camera. Units are meters.
-     * @param odometryCovariance Covariance of the odometry input when doing
-     *                           sensor fusion (you probably want to tune this)
-     * @param relocMapPath       path (including filename) to a relocalization map
-     *                           to load.
+     * @param robotOffsetMeters Offset of the center of the robot from the center of the camera.
+     *     Units are meters.
+     * @param odometryCovariance Covariance of the odometry input when doing sensor fusion (you
+     *     probably want to tune this)
+     * @param relocMapPath path (including filename) to a relocalization map to load.
      */
-    public T265Camera(Transform2d robotOffsetMeters, double odometryCovariance, String relocMapPath, Context appContext) {
+    public T265Camera(
+            Transform2d robotOffsetMeters,
+            double odometryCovariance,
+            String relocMapPath,
+            Context appContext) {
         if (mLinkError != null) {
             throw mLinkError;
         }
 
-        DeviceListener callback = new DeviceListener() {
-            @Override
-            public void onDeviceAttach() {
-                mInitWaitMutex.lock();
-                try {
-                    // This check assumes that there's only one camera
-                    synchronized (mPointerMutex) {
-                        if (mNativeCameraObjectPointer != 0) {
-                            return;
+        DeviceListener callback =
+                new DeviceListener() {
+                    @Override
+                    public void onDeviceAttach() {
+                        mInitWaitMutex.lock();
+                        try {
+                            // This check assumes that there's only one camera
+                            synchronized (mPointerMutex) {
+                                if (mNativeCameraObjectPointer != 0) {
+                                    return;
+                                }
+                            }
+
+                            Log.i(
+                                    kLogTag,
+                                    "onDeviceAttached called... Will attempt to handoff to native code.");
+
+                            long ptr = newCamera(relocMapPath);
+                            synchronized (mPointerMutex) {
+                                if (ptr != 0) mHasInitedSuccessfullyBefore = true;
+                                mNativeCameraObjectPointer = ptr;
+                            }
+                            setOdometryInfo(
+                                    (float) robotOffsetMeters.getTranslation().getX(),
+                                    (float) robotOffsetMeters.getTranslation().getY(),
+                                    (float) robotOffsetMeters.getRotation().getRadians(),
+                                    odometryCovariance);
+                            mRobotOffset = robotOffsetMeters;
+
+                            Log.i(kLogTag, "Native code should be done initializing");
+                        } finally {
+                            mInitWaitMutex.unlock();
                         }
                     }
 
-                    Log.i(kLogTag, "onDeviceAttached called... Will attempt to handoff to native code.");
-
-                    long ptr = newCamera(relocMapPath);
-                    synchronized (mPointerMutex) {
-                        if (ptr != 0) mHasInitedSuccessfullyBefore = true;
-                        mNativeCameraObjectPointer = ptr;
+                    @Override
+                    public void onDeviceDetach() {
+                        // Unfortunately we don't get any information about the detaching device,
+                        // which means
+                        // that any rs device detaching will detach *all* other devices.
+                        // This is one of the few blockers for multi-device support.
+                        if (mNativeCameraObjectPointer != 0) {
+                            Log.i(
+                                    kLogTag,
+                                    "onDeviceDetach called... Will attempt to free native objects.");
+                            free();
+                        }
                     }
-                    setOdometryInfo((float) robotOffsetMeters.getTranslation().getX(),
-                            (float) robotOffsetMeters.getTranslation().getY(),
-                            (float) robotOffsetMeters.getRotation().getRadians(), odometryCovariance);
-                    mRobotOffset = robotOffsetMeters;
 
-                    Log.i(kLogTag, "Native code should be done initializing");
-                } finally {
-                    mInitWaitMutex.unlock();
-                }
-            }
-
-            @Override
-            public void onDeviceDetach() {
-                // Unfortunately we don't get any information about the detaching device, which means
-                // that any rs device detaching will detach *all* other devices.
-                // This is one of the few blockers for multi-device support.
-                if (mNativeCameraObjectPointer != 0) {
-                    Log.i(kLogTag, "onDeviceDetach called... Will attempt to free native objects.");
-                    free();
-                }
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                return false;
-            }
-        };
+                    @Override
+                    public boolean equals(Object obj) {
+                        return false;
+                    }
+                };
 
         Log.d(kLogTag, "Initializing RsContext and asking for permissions...");
         RsContext.init(appContext, callback);
     }
 
     /**
-     * This allows the {@link T265Camera#getLastReceivedCameraUpdate()} to start
-     * returning pose data. This will NOT reset the camera's pose.
-     * <p>
-     * This will not restart the camera following
-     * {@link T265Camera#exportRelocalizationMap(String)}. You will have to call
-     * {@link T265Camera#free()} and make a new {@link T265Camera}. This is
-     * related to what appears to be a bug in librealsense.
+     * This allows the {@link T265Camera#getLastReceivedCameraUpdate()} to start returning pose
+     * data. This will NOT reset the camera's pose.
      *
-     * @throws RuntimeException This will throw if the camera isn't connected or the camera has already been started.
+     * <p>This will not restart the camera following {@link
+     * T265Camera#exportRelocalizationMap(String)}. You will have to call {@link T265Camera#free()}
+     * and make a new {@link T265Camera}. This is related to what appears to be a bug in
+     * librealsense.
+     *
+     * @throws RuntimeException This will throw if the camera isn't connected or the camera has
+     *     already been started.
      */
     public void start() {
-        start((update) -> {
-            synchronized (mUpdateMutex) {
-                mLastRecievedUpdate = update;
-            }
-        });
+        start(
+                (update) -> {
+                    synchronized (mUpdateMutex) {
+                        mLastRecievedUpdate = update;
+                    }
+                });
     }
 
     /**
-     * This allows the user-provided pose receive callback to receive data.
-     * This will NOT reset the camera's pose. This is the advanced version of the start method; if
-     * you don't want to provide a callback and just want to call
-     * {@link T265Camera#getLastReceivedCameraUpdate()} instead then you
-     * should call {@link T265Camera#start()}.
-     * <p>
-     * This will not restart the camera following
-     * {@link T265Camera#exportRelocalizationMap(String)}. You will have to call
-     * {@link T265Camera#free()} and make a new {@link T265Camera}. This is
-     * related to what appears to be a bug in librealsense.
+     * This allows the user-provided pose receive callback to receive data. This will NOT reset the
+     * camera's pose. This is the advanced version of the start method; if you don't want to provide
+     * a callback and just want to call {@link T265Camera#getLastReceivedCameraUpdate()} instead
+     * then you should call {@link T265Camera#start()}.
      *
-     * @param poseConsumer A method to be called every time we receive a pose from
-     *                     <i>from a different thread</i>! You must synchronize
-     *                     memory access across threads!
-     *                     <p>
-     *                     Received poses are in meters.
-     * @throws RuntimeException This will throw if the camera isn't connected or the camera has already been started.
+     * <p>This will not restart the camera following {@link
+     * T265Camera#exportRelocalizationMap(String)}. You will have to call {@link T265Camera#free()}
+     * and make a new {@link T265Camera}. This is related to what appears to be a bug in
+     * librealsense.
+     *
+     * @param poseConsumer A method to be called every time we receive a pose from <i>from a
+     *     different thread</i>! You must synchronize memory access across threads!
+     *     <p>Received poses are in meters.
+     * @throws RuntimeException This will throw if the camera isn't connected or the camera has
+     *     already been started.
      */
     public synchronized void start(Consumer<CameraUpdate> poseConsumer) {
         Log.d(kLogTag, "Trying to start camera callback");
 
         synchronized (mPointerMutex) {
-            if (mIsStarted)
-                throw new RuntimeException("Camera is already started");
+            if (mIsStarted) throw new RuntimeException("Camera is already started");
             else if (mNativeCameraObjectPointer == 0 && mInitWaitMutex.tryLock()) {
                 try {
                     throw new RuntimeException("No camera connected");
@@ -238,18 +242,23 @@ public class T265Camera {
      * Blocks until a new camera update comes in. The camera update will include the latest pose
      * estimate.
      *
-     * @return The last received camera update, or null if a custom callback was
-     * passed to {@link T265Camera#start(Consumer)}.
-     * @throws RuntimeException This may throw if the camera initialization fails or the camera became disconnected during initialization. It will not throw following one successful connection.
+     * @return The last received camera update, or null if a custom callback was passed to {@link
+     *     T265Camera#start(Consumer)}.
+     * @throws RuntimeException This may throw if the camera initialization fails or the camera
+     *     became disconnected during initialization. It will not throw following one successful
+     *     connection.
      */
     public CameraUpdate getLastReceivedCameraUpdate() {
         synchronized (mPointerMutex) {
             // Note that if we *have* successfully initialized before then we won't throw. This is a
             // Good Thing because the camera might become disconnected during a match, and we want
             // to try and reconnect and *not* throw in that case.
-            if (mNativeCameraObjectPointer == 0 && !mHasInitedSuccessfullyBefore && mInitWaitMutex.tryLock()) {
+            if (mNativeCameraObjectPointer == 0
+                    && !mHasInitedSuccessfullyBefore
+                    && mInitWaitMutex.tryLock()) {
                 try {
-                    throw new RuntimeException("The camera is busy or became disconnected during initialization!");
+                    throw new RuntimeException(
+                            "The camera is busy or became disconnected during initialization!");
                 } finally {
                     mInitWaitMutex.unlock();
                 }
@@ -258,17 +267,16 @@ public class T265Camera {
 
         synchronized (mUpdateMutex) {
             if (mLastRecievedUpdate == null) {
-                Log.w(kLogTag, "Attempt to get last received update before any updates have been received; are you using the wrong T265Camera::start overload, or is the camera not initialized yet or busy?");
+                Log.w(
+                        kLogTag,
+                        "Attempt to get last received update before any updates have been received; are you using the wrong T265Camera::start overload, or is the camera not initialized yet or busy?");
                 return new CameraUpdate(new Pose2d(), new ChassisSpeeds(), PoseConfidence.Failed);
             }
             return mLastRecievedUpdate;
         }
     }
 
-    /**
-     * This stops the callback from receiving data, but it does not internally stop the
-     * camera.
-     */
+    /** This stops the callback from receiving data, but it does not internally stop the camera. */
     public synchronized void stop() {
         Log.d(kLogTag, "Stopping camera callback");
 
@@ -280,23 +288,20 @@ public class T265Camera {
     }
 
     /**
-     * Exports a binary relocalization map file to the given path.
-     * This will stop the camera. Because of a librealsense bug the camera isn't
-     * restarted after you call this method. TODO: Fix that.
+     * Exports a binary relocalization map file to the given path. This will stop the camera.
+     * Because of a librealsense bug the camera isn't restarted after you call this method. TODO:
+     * Fix that.
      *
      * @param path Path (with filename) to export to
      */
     public native void exportRelocalizationMap(String path);
 
     /**
-     * Sends robot velocity as computed from wheel encoders. Note that the X and Y
-     * axis orientations are determined by how you set the robotOffset in the
-     * constructor.
+     * Sends robot velocity as computed from wheel encoders. Note that the X and Y axis orientations
+     * are determined by how you set the robotOffset in the constructor.
      *
-     * @param velocityXMetersPerSecond The robot-relative velocity along the X axis
-     *                                 in meters/sec.
-     * @param velocityYMetersPerSecond The robot-relative velocity along the Y axis
-     *                                 in meters/sec.
+     * @param velocityXMetersPerSecond The robot-relative velocity along the X axis in meters/sec.
+     * @param velocityYMetersPerSecond The robot-relative velocity along the Y axis in meters/sec.
      */
     public void sendOdometry(double velocityXMetersPerSecond, double velocityYMetersPerSecond) {
         synchronized (mPointerMutex) {
@@ -305,8 +310,7 @@ public class T265Camera {
         }
 
         // Only 1 odometry sensor is supported for now (index 0)
-        sendOdometryRaw(0, (float) velocityXMetersPerSecond,
-                (float) velocityYMetersPerSecond);
+        sendOdometryRaw(0, (float) velocityXMetersPerSecond, (float) velocityYMetersPerSecond);
     }
 
     /**
@@ -319,14 +323,16 @@ public class T265Camera {
     }
 
     /**
-     * This will free the underlying native objects. You probably don't want to use
-     * this; on program shutdown the native code will gracefully stop and delete any
-     * remaining objects.
+     * This will free the underlying native objects. You probably don't want to use this; on program
+     * shutdown the native code will gracefully stop and delete any remaining objects.
      */
     public native void free();
 
-    private native void setOdometryInfo(float robotOffsetX, float robotOffsetY,
-                                        float robotOffsetRads, double measurementCovariance);
+    private native void setOdometryInfo(
+            float robotOffsetX,
+            float robotOffsetY,
+            float robotOffsetRads,
+            double measurementCovariance);
 
     private native void sendOdometryRaw(int sensorIndex, float xVel, float yVel);
 
@@ -334,19 +340,21 @@ public class T265Camera {
 
     private static native void cleanup();
 
-    private synchronized void consumePoseUpdate(float x, float y, float radians, float dx, float dy,
-                                                float dtheta, int confOrdinal) {
+    private synchronized void consumePoseUpdate(
+            float x, float y, float radians, float dx, float dy, float dtheta, int confOrdinal) {
         // First we apply an offset to go from the camera coordinate system to the
         // robot coordinate system with an origin at the center of the robot. This
         // is not a directional transformation.
         // Then we transform the pose our camera is giving us so that it reports is
         // the robot's pose, not the camera's. This is a directional transformation.
-        final Pose2d currentPose = new Pose2d(x - mRobotOffset.getTranslation().getX(),
-                y - mRobotOffset.getTranslation().getY(), new Rotation2d(radians))
-                .transformBy(mRobotOffset);
+        final Pose2d currentPose =
+                new Pose2d(
+                                x - mRobotOffset.getTranslation().getX(),
+                                y - mRobotOffset.getTranslation().getY(),
+                                new Rotation2d(radians))
+                        .transformBy(mRobotOffset);
 
-        if (!mIsStarted)
-            return;
+        if (!mIsStarted) return;
 
         // See
         // https://github.com/IntelRealSense/librealsense/blob/7f2ba0de8769620fd672f7b44101f0758e7e2fb3/include/librealsense2/h/rs_types.h#L115
@@ -367,18 +375,20 @@ public class T265Camera {
                 break;
             default:
                 throw new RuntimeException(
-                        "Unknown confidence ordinal \"" + confOrdinal + "\" passed from native code");
+                        "Unknown confidence ordinal \""
+                                + confOrdinal
+                                + "\" passed from native code");
         }
 
-        final Pose2d transformedPose = mOrigin.transformBy(new Transform2d(currentPose.getTranslation(), currentPose.getRotation()));
+        final Pose2d transformedPose =
+                mOrigin.transformBy(
+                        new Transform2d(currentPose.getTranslation(), currentPose.getRotation()));
 
-        mPoseConsumer.accept(new CameraUpdate(transformedPose,
-                new ChassisSpeeds(dx, dy, dtheta), confidence));
+        mPoseConsumer.accept(
+                new CameraUpdate(transformedPose, new ChassisSpeeds(dx, dy, dtheta), confidence));
     }
 
-    /**
-     * Thrown if something goes wrong in the native code
-     */
+    /** Thrown if something goes wrong in the native code */
     public static class CameraJNIException extends RuntimeException {
 
         // This must be static _and_ have this constructor if you want it to be
