@@ -1,3 +1,19 @@
+// Copyright 2020-2021 Declan Freeman-Gleason
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this program.  If not, see
+// <https://www.gnu.org/licenses/>.
+
 #include "t265wrapper.hpp"
 
 #include <algorithm>
@@ -21,7 +37,7 @@ constexpr auto exportRelocMapStopDelay = std::chrono::seconds(10);
 constexpr auto logTag = "ftc265";
 
 // We cache all of these because we can
-jclass holdingClass = nullptr; // This should always be T265Camera jclass
+jclass holdingClass = nullptr; // This should always be the T265Camera jclass
 jfieldID handleFieldId =
     nullptr; // Field id for the field "nativeCameraObjectPointer"
 jclass exception = nullptr; // This is "CameraJNIException"
@@ -107,6 +123,18 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void * /*reserved*/) {
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj,
                                                   jstring mapPath) {
+  // This locking scheme is very conservative. This is important. When the T265
+  // is attached from a cold boot, it will first present as a Movidius device,
+  // which is handled on the Java end and ultimately gets passed to this code to
+  // be initialized. As we initialize it the camera appears to reboot (?),
+  // disconnect, and then reconnect with the T265 VID/PID. If we do not protect
+  // the entire init process *and* free process with a mutex then we'll end up
+  // free'ing this camera while we're still initializing. This global mutex also
+  // protects us from initialzing two cameras at once. Initialzing two cameras
+  // at once isn't theoretically a problem if they aren't the same USB device,
+  // but we don't discriminate and it's possible that the same USB device would
+  // be picked by both inits. Ultimately, forcing inits and frees to run in
+  // serial *globally* is in our best interest.
   std::scoped_lock lk(cleanupMutex);
 
   try {
@@ -118,6 +146,7 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj,
     try {
       devAndSensors = getDeviceFromClass(env, thisObj);
     } catch (std::runtime_error &) {
+      // Ignore the exception and check manually below
     }
     if (devAndSensors && devAndSensors->isRunning)
       throw std::runtime_error("Can't make a new camera if the calling class "
@@ -176,12 +205,15 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj,
           "Couldn't get a JavaVM object from the current JNI environment");
     auto globalThis = env->NewGlobalRef(thisObj); // Must be cleaned up later
 
+    // Need to new because the lifetime of this object is controlled by Java
+    // code and we set a field in the Java class to this pointer
     devAndSensors = new deviceAndSensors(pipeline, odom, pose, globalThis);
 
     auto consumerCallback = [jvm, devAndSensors](const rs2::frame &frame) {
       JNIEnv *env = nullptr;
       try {
-        // Attaching the thread is expensive... TODO: Cache env?
+        // Attaching the thread is expensive and happens *every callback*...
+        // TODO: Cache env?
         int error = jvm->AttachCurrentThread(&env, nullptr);
         if (error)
           throw std::runtime_error("Couldn't attach callback thread to jvm");
@@ -284,16 +316,19 @@ Java_com_spartronics4915_lib_T265Camera_exportRelocalizationMap(
           "Can't export a relocalization map when the device isn't running "
           "(have you already exported?)");
 
+    // We can't export while the camera is running
     devAndSensors->pipeline->stop();
     devAndSensors->isRunning = false;
 
     // I know, this is really gross...
     // Unfortunately there is apparently no way to figure out if we're ready to
-    // export the map
+    // export the map. See:
     // https://github.com/IntelRealSense/librealsense/issues/4024#issuecomment-494258285
     std::this_thread::sleep_for(exportRelocMapStopDelay);
 
-    // set_static_node fails if the confidence is not High
+    // set_static_node fails if the confidence is not High... We don't currently
+    // use the static node, but you really probably shouldn't be exporting your
+    // map if your confidence isn't high anyway.
     auto success = devAndSensors->poseSensor->set_static_node(
         originNodeName, rs2_vector{0, 0, 0}, rs2_quaternion{0, 0, 0, 1});
     if (!success)
@@ -342,7 +377,10 @@ void importRelocalizationMap(const char *path, rs2::pose_sensor *poseSensor) {
     throw std::runtime_error(
         "import_localization_map returned a value indicating failure");
 
-  // TODO: Transform by get_static_node("origin", ...)
+  // TODO: Transform by get_static_node("origin", ...)?
+  // Useful if users want to have the same origin. In practice this hasn't been
+  // requested and users seem content having their origin after map import being
+  // the real origin.
 
   file.close();
 }
@@ -354,6 +392,7 @@ Java_com_spartronics4915_lib_T265Camera_setOdometryInfo(
   try {
     ensureCache(env, thisObj);
 
+    // std::format cannot come soon enough :(
     auto size = snprintf(nullptr, 0, odometryConfig, measureCovariance,
                          -yOffset, -xOffset, angOffset);
     char buf[size];
@@ -370,6 +409,11 @@ Java_com_spartronics4915_lib_T265Camera_setOdometryInfo(
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_spartronics4915_lib_T265Camera_free(JNIEnv *env, jobject thisObj) {
+  // It's important that we cannot initialize another camera while we're
+  // free'ing or vice versa. This global mutex also prevents cleanup from being
+  // called simeltaneously. In practice this mutex is only ever contended when
+  // the T265 goes through a weird init sequence from cold boot (see comment in
+  // the newCamera method.)
   std::scoped_lock lk(cleanupMutex);
 
   try {
@@ -408,7 +452,9 @@ Java_com_spartronics4915_lib_T265Camera_cleanup(JNIEnv *env, jclass) {
     if (exception) {
       env->ThrowNew(exception, e.what());
     } else {
-      std::cerr << e.what() << "\n";
+      // JVM bits could have already been cleaned up when we throw
+      __android_log_print(ANDROID_LOG_ERROR, logTag, e.what());
+      std::cerr << e.what() << std::endl;
     }
   }
 }
