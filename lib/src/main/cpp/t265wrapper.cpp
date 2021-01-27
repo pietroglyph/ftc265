@@ -453,7 +453,7 @@ Java_com_spartronics4915_lib_T265Camera_cleanup(JNIEnv *env, jclass) {
       env->ThrowNew(exception, e.what());
     } else {
       // JVM bits could have already been cleaned up when we throw
-      __android_log_print(ANDROID_LOG_ERROR, logTag, e.what());
+      __android_log_print(ANDROID_LOG_ERROR, logTag, "Exception after JVM cleanup: %s", e.what());
       std::cerr << e.what() << std::endl;
     }
   }

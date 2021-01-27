@@ -7,9 +7,8 @@ import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.geometry.Transform2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 import com.intel.realsense.librealsense.DeviceListener;
+import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 /**
@@ -73,17 +72,15 @@ public class T265Camera {
         }
     }
 
-    private final Lock mInitWaitMutex = new ReentrantLock();
-
     // Protected by mPointerMutex
     private final Object mPointerMutex = new Object();
-    private boolean mHasInitedSuccessfullyBefore = false;
+    private boolean mHasSeenDeviceBefore = false;
     private long mNativeCameraObjectPointer = 0;
 
     // Protected by a mutex on this
     private boolean mIsStarted = false;
     private Transform2d mRobotOffset;
-    private Pose2d mOrigin = new Pose2d();
+    private Pose2d mOriginOffset = new Pose2d();
 
     // Protected by mUpdateMutex
     private final Object mUpdateMutex = new Object();
@@ -121,11 +118,13 @@ public class T265Camera {
             throw mLinkError;
         }
 
+        // Don't need to synchronize this assignment because no other threads are running yet
+        mHasSeenDeviceBefore = new RsContext().queryDevices(ProductLine.T200).getDeviceCount() > 0;
+
         DeviceListener callback =
                 new DeviceListener() {
                     @Override
                     public void onDeviceAttach() {
-                        mInitWaitMutex.lock();
                         try {
                             // This check assumes that there's only one camera
                             synchronized (mPointerMutex) {
@@ -140,7 +139,9 @@ public class T265Camera {
 
                             long ptr = newCamera(relocMapPath);
                             synchronized (mPointerMutex) {
-                                if (ptr != 0) mHasInitedSuccessfullyBefore = true;
+                                // newCamera is hoisted out to before we lock because it can block
+                                // for a while
+                                mHasSeenDeviceBefore |= ptr != 0;
                                 mNativeCameraObjectPointer = ptr;
                             }
                             setOdometryInfo(
@@ -156,9 +157,6 @@ public class T265Camera {
                                     kLogTag,
                                     "Exception while initializing camera (could be spurious if camera was initially presented as a generic Movidius device as part of the init process)",
                                     e);
-                        } finally {
-                            Log.d(kLogTag, "Unlocking init wait mutex");
-                            mInitWaitMutex.unlock();
                         }
                     }
 
@@ -166,19 +164,10 @@ public class T265Camera {
                     public void onDeviceDetach() {
                         Log.d(kLogTag, "onDeviceDetach called...");
                         synchronized (mPointerMutex) {
-                            // If we can disconnect from a device then we've connected before and
-                            // should try and reconnect instead of throwing an error. This deals
-                            // with the case where the device presents as a generic Movidius device
-                            // and then disconnects and reconnects as a T265.
-                            synchronized (T265Camera.this) {
-                                mHasInitedSuccessfullyBefore |= mIsStarted;
-                            }
-
                             // Unfortunately we don't get any information about the detaching
-                            // device,
-                            // which means
-                            // that any rs device detaching will detach *all* other devices.
-                            // This is one of the few blockers for multi-device support.
+                            // device, which means that any rs device detaching will detach *all*
+                            // other devices. This is one of the few blockers for multi-device
+                            // support.
                             if (mNativeCameraObjectPointer != 0) {
                                 Log.i(
                                         kLogTag,
@@ -233,20 +222,16 @@ public class T265Camera {
      * @param poseConsumer A method to be called every time we receive a pose from <i>from a
      *     different thread</i>! You must synchronize memory access across threads!
      *     <p>Received poses are in meters.
-     * @throws RuntimeException This will throw if the camera isn't connected or the camera has
-     *     already been started.
+     * @throws RuntimeException This will throw if the camera isn't connected. This will never throw
+     *     following one successful connection; we will instead continue to try and reconnect.
      */
     public synchronized void start(Consumer<CameraUpdate> poseConsumer) {
         Log.d(kLogTag, "Trying to start camera callback");
 
         synchronized (mPointerMutex) {
             if (mIsStarted) throw new RuntimeException("Camera is already started");
-            else if (mNativeCameraObjectPointer == 0 && mInitWaitMutex.tryLock()) {
-                try {
-                    throw new RuntimeException("No camera connected");
-                } finally {
-                    mInitWaitMutex.unlock();
-                }
+            else if (mNativeCameraObjectPointer == 0 && !mHasSeenDeviceBefore) {
+                throw new RuntimeException("No camera connected");
             }
         }
 
@@ -266,27 +251,8 @@ public class T265Camera {
      *
      * @return The last received camera update, or null if a custom callback was passed to {@link
      *     T265Camera#start(Consumer)}.
-     * @throws RuntimeException This may throw if the camera initialization fails or the camera
-     *     became disconnected during initialization. It will not throw following one successful
-     *     connection.
      */
     public CameraUpdate getLastReceivedCameraUpdate() {
-        synchronized (mPointerMutex) {
-            // Note that if we *have* successfully initialized before then we won't throw. This is a
-            // Good Thing because the camera might become disconnected during a match, and we want
-            // to try and reconnect and *not* throw in that case.
-            if (mNativeCameraObjectPointer == 0
-                    && !mHasInitedSuccessfullyBefore
-                    && mInitWaitMutex.tryLock()) {
-                try {
-                    throw new RuntimeException(
-                            "The camera is busy or became disconnected during initialization!");
-                } finally {
-                    mInitWaitMutex.unlock();
-                }
-            }
-        }
-
         synchronized (mUpdateMutex) {
             if (mLastRecievedUpdate == null) {
                 Log.w(
@@ -303,7 +269,8 @@ public class T265Camera {
         Log.d(kLogTag, "Stopping camera callback");
 
         synchronized (mPointerMutex) {
-            mHasInitedSuccessfullyBefore = false;
+            mHasSeenDeviceBefore =
+                    new RsContext().queryDevices(ProductLine.T200).getDeviceCount() > 0;
         }
 
         mIsStarted = false;
@@ -341,7 +308,11 @@ public class T265Camera {
      * @param newPose The pose the camera should be zeroed to.
      */
     public synchronized void setPose(Pose2d newPose) {
-        mOrigin = newPose;
+        synchronized (mUpdateMutex) {
+            mOriginOffset =
+                    newPose.relativeTo(
+                            mLastRecievedUpdate == null ? new Pose2d() : mLastRecievedUpdate.pose);
+        }
     }
 
     /**
@@ -403,7 +374,7 @@ public class T265Camera {
         }
 
         final Pose2d transformedPose =
-                mOrigin.transformBy(
+                mOriginOffset.transformBy(
                         new Transform2d(currentPose.getTranslation(), currentPose.getRotation()));
 
         mPoseConsumer.accept(
