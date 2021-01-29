@@ -9,6 +9,7 @@ import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
@@ -72,6 +73,8 @@ public class T265Camera {
         }
     }
 
+    private final AtomicBoolean mInitInProgress = new AtomicBoolean(false);
+
     // Protected by mPointerMutex
     private final Object mPointerMutex = new Object();
     private boolean mHasSeenDeviceBefore = false;
@@ -118,14 +121,13 @@ public class T265Camera {
             throw mLinkError;
         }
 
-        // Don't need to synchronize this assignment because no other threads are running yet
-        mHasSeenDeviceBefore = new RsContext().queryDevices(ProductLine.T200).getDeviceCount() > 0;
-
         DeviceListener callback =
                 new DeviceListener() {
                     @Override
                     public void onDeviceAttach() {
                         try {
+                            mInitInProgress.set(true);
+
                             // This check assumes that there's only one camera
                             synchronized (mPointerMutex) {
                                 if (mNativeCameraObjectPointer != 0) {
@@ -157,6 +159,9 @@ public class T265Camera {
                                     kLogTag,
                                     "Exception while initializing camera (could be spurious if camera was initially presented as a generic Movidius device as part of the init process)",
                                     e);
+                        } finally {
+                            Log.d(kLogTag, "Setting initInProgress to false");
+                            mInitInProgress.set(false);
                         }
                     }
 
@@ -185,6 +190,11 @@ public class T265Camera {
 
         Log.d(kLogTag, "Initializing RsContext and asking for permissions...");
         RsContext.init(appContext, callback);
+
+        synchronized (mPointerMutex) {
+            mHasSeenDeviceBefore =
+                    new RsContext().queryDevices(ProductLine.T200).getDeviceCount() > 0;
+        }
     }
 
     /**
@@ -230,7 +240,9 @@ public class T265Camera {
 
         synchronized (mPointerMutex) {
             if (mIsStarted) throw new RuntimeException("Camera is already started");
-            else if (mNativeCameraObjectPointer == 0 && !mHasSeenDeviceBefore) {
+            else if (mNativeCameraObjectPointer == 0
+                    && !mHasSeenDeviceBefore
+                    && !mInitInProgress.get()) {
                 throw new RuntimeException("No camera connected");
             }
         }
@@ -243,6 +255,14 @@ public class T265Camera {
         mIsStarted = true;
 
         Log.d(kLogTag, "Camera callback should be started");
+    }
+
+    /**
+     * @return Whether or not the camera is started. Note: the camera driver can still be
+     *     initializing while it is started.
+     */
+    public synchronized boolean isStarted() {
+        return mIsStarted;
     }
 
     /**
