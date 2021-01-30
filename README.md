@@ -15,7 +15,7 @@ repositories {
     // This line will already be here; you do not need to add it
     maven { url = "https://dl.bintray.com/first-tech-challenge/ftcsdk/" }
     // Add this line
-    maven { url = "https://0x778.tk" }
+    maven { url = "https://maven.0x778.tk" }
 }
 ```
 
