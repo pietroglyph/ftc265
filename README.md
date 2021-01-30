@@ -24,7 +24,7 @@ And then paste the following into `TeamCode/build.release.gradle`:
 dependencies {
     // There should be a bunch of implementation configurations here already
 
-    implementation 'com.spartronics4915.lib:ftc265:2.1.7'
+    implementation 'com.spartronics4915.lib:ftc265:2.1.8'
 }
 ```
 

@@ -7,8 +7,8 @@ import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.geometry.Transform2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 import com.intel.realsense.librealsense.DeviceListener;
-import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
+import com.intel.realsense.librealsense.UsbUtilities;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -192,8 +192,9 @@ public class T265Camera {
         RsContext.init(appContext, callback);
 
         synchronized (mPointerMutex) {
-            mHasSeenDeviceBefore =
-                    new RsContext().queryDevices(ProductLine.T200).getDeviceCount() > 0;
+            int numDevices = UsbUtilities.getDevices(appContext).size();
+            Log.d(kLogTag, "Found " + numDevices + " devices at init");
+            mHasSeenDeviceBefore = numDevices > 0;
         }
     }
 
@@ -287,11 +288,6 @@ public class T265Camera {
     /** This stops the callback from receiving data, but it does not internally stop the camera. */
     public synchronized void stop() {
         Log.d(kLogTag, "Stopping camera callback");
-
-        synchronized (mPointerMutex) {
-            mHasSeenDeviceBefore =
-                    new RsContext().queryDevices(ProductLine.T200).getDeviceCount() > 0;
-        }
 
         mIsStarted = false;
     }
