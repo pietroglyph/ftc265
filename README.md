@@ -1,22 +1,47 @@
 # ftc265
 
+[![Discord](https://img.shields.io/discord/733961104807428140?color=%23738ADB&label=Join%20the%20Discord&logo=discord&logoColor=white)](https://discord.gg/85hZ4dnBUd)
+
 ftc265 is a plug-and-play Intel RealSense T265 VSLAM camera wrapper for FTC based off my work in FRC writing a [roboRIO T265 wrapper](https://github.com/Spartronics4915/SpartronicsLib).
 
 ## Installation
+To get started you can either copy the [example project](https://github.com/pietroglyph/FtcRobotController/tree/ftc265-example), or you can install manually.
+
+### Manual Installation
 Paste the following into `TeamCode/build.gradle`:
 
 ```gradle
 repositories {
-    jcenter()
-
-    maven {
-        url "https://maven.0x778.tk"
-    }
+    // This line will already be here; you do not need to add it
+    maven { url = "https://dl.bintray.com/first-tech-challenge/ftcsdk/" }
+    // Add this line
+    maven { url = "https://maven.0x778.tk" }
 }
+```
 
+And then paste the following into `TeamCode/build.release.gradle`:
+```gradle
 dependencies {
-    // This will get the latest compatible version
-    implementation 'com.spartronics4915.lib:ftc265:2.1.2'
+    // There should be a bunch of implementation configurations here already
+
+    implementation 'com.spartronics4915.lib:ftc265:2.1.8'
+}
+```
+
+Finally, set the `sourceCompatibility`, `targetCompatibility`, and `minSdkVersion` in the root `build.common.gradle` if you haven't already:
+```gradle
+android {
+    // NOTE: There will be *way* more things in this file than what's shown here.
+    // The blocks shown here should already exist, and you'll only need to change these three shown parameters.
+
+    defaultConfig {
+        minSdkVersion 24
+    }
+ 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 ```
 
@@ -45,7 +70,7 @@ while (true) {
 }
 ```
 
-There is also a ready-to-use example project [here](https://github.com/pietroglyph/ftc_app/tree/ftc265_template).
+There is also a ready-to-use example project [here](https://github.com/pietroglyph/FtcRobotController/tree/ftc265-example).
 
 Please note that the above example uses the simple synchronous API. There is also a more advanced callback-based API available.
 
@@ -55,7 +80,8 @@ Please note that the above example uses the simple synchronous API. There is als
 If you're getting a "No camera connected" exception then you can try a few things:
  1. Connect the camera to a computer running realsense-viewer and make sure that it works there.
  2. If you're using a USB hub, make sure to plug the hub in first, power the hub on (if applicable), and then connect the camera.
- 3. If nothing works then you can open an issue or contact me on Discord (I'm pietroglyph#9445) and send me your app logs.
+ 3. If you're using the Control Hub and your camera won't connect when you first boot up, try plugging the camera into the USB 2 port on subsequent boots.
+ 4. If nothing works then you can open an issue or [join the Discord server](https://discord.gg/85hZ4dnBUd).
 
 ### The app hangs when I instantiate a `T265Camera`
 This is likely happening because you haven't granted the correct permissions. The easiest way to get a permissions prompt is to uninstall and reinstall the robot controller app. After reinstalling you should get a permissions prompt on first run.
@@ -92,7 +118,7 @@ Unfortunately, there is no canonical set of geometry classes (`Pose2d`, `Transfo
 I had to write JNI bindings to C++ librealsense because no Java bindings exist for the T265. Then I had to patch librealsense to get around some bugs and Android incompatibilities (especially related to the maximum size for USB bulk transfers and the list of USB VID/PID combos); this is why I distribute a custom version of librealsense.
 
 ### Can I contribute?
-Yes. Please report bugs or (even better) make a PR. FTC is not my main focus, and I will soon lose access to my team's T265 camera, so I would appreciate it if any nontrivial PRs are accompanied by a test on real hardware.
+Yes. Please report bugs or (even better) make a PR. FTC is not my main focus, and I do not currently have access to testing hardware, so I would appreciate it if any nontrivial PRs are accompanied by a test on real hardware (or even better, a unit test.)
 
 ### Will you support this into the future?
 This is contingent on the community's response and Intel's actions. If ftc265 becomes popular then I will continue to support it as best I can into the future until Intel provides a reasonable alternative. Please note that I have limited time and that FTC is not my main focus; I will endevor to fix issues and respond to you as fast as possible, but expect the standard deviation on my response time to be high :)
