@@ -42,8 +42,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = 1.8
-        targetCompatibility = 1.8
+        sourceCompatibility = 8
+        targetCompatibility = 8
     }
 
     // So we can use Android framework code in unit tests
@@ -55,10 +55,9 @@ android {
 repositories {
     // Needed for FTCLib
     jcenter()
+    mavenCentral()
 
-    maven {
-        url 'https://maven.0x778.tk'
-    }
+    maven { url "https://maven.0x778.tk"}
 }
 
 configurations {
@@ -69,7 +68,8 @@ configurations {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation 'com.arcrobotics:ftclib:1.0.1' // For geometry classes
+    implementation 'com.arcrobotics:ftclib:1.1.6' // For geometry classes
+    implementation 'org.ejml:ejml-all:0.40'
 
     testImplementation 'junit:junit:4.12'
 
