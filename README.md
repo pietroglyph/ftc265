@@ -19,16 +19,16 @@ repositories {
 }
 ```
 
-And then paste the following into `TeamCode/build.release.gradle`:
+At the bottom of `TeamCode/build.gradle` add the following (if you have an existing `dependencies` block you can just add the `implementation` line to that dependencies block):
 ```gradle
 dependencies {
     // There should be a bunch of implementation configurations here already
 
-    implementation 'com.spartronics4915.lib:ftc265:2.1.8'
+    implementation 'com.spartronics4915.lib:ftc265:2.1.9'
 }
 ```
 
-Finally, set the `sourceCompatibility`, `targetCompatibility`, and `minSdkVersion` in the root `build.common.gradle` if you haven't already:
+Finally, set the `sourceCompatibility`, `targetCompatibility`, and `minSdkVersion` in the `build.common.gradle` at the project root if you haven't already:
 ```gradle
 android {
     // NOTE: There will be *way* more things in this file than what's shown here.

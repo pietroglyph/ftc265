@@ -14,8 +14,8 @@ android {
     defaultConfig {
         minSdkVersion 24
         targetSdkVersion 29
-        versionCode 13 // This number just needs to increase monotonically after every version change
-        versionName "2.1.8"
+        versionCode 14 // This number just needs to increase monotonically after every version change
+        versionName "2.1.9"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -50,11 +50,15 @@ android {
     testOptions {
         unitTests.includeAndroidResources = true
     }
+
+    lintOptions {
+        disable 'InvalidPackage' // EJML doesn't properly separate out AWT classes into their own package
+    }
 }
 
 repositories {
     // Needed for FTCLib
-    jcenter()
+    mavenCentral()
 
     maven {
         url 'https://maven.0x778.tk'
@@ -69,7 +73,9 @@ configurations {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation 'com.arcrobotics:ftclib:1.0.1' // For geometry classes
+    implementation('org.ftclib.ftclib:core:1.2.0') { // For geometry classes
+        exclude group: 'org.ejml', module: 'ejml-all'
+    }
 
     testImplementation 'junit:junit:4.12'
 
