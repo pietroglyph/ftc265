@@ -87,7 +87,7 @@ public class T265Camera {
 
     // Protected by mUpdateMutex
     private final Object mUpdateMutex = new Object();
-    private CameraUpdate mLastRecievedUpdate = null;
+    private CameraUpdate mLastReceivedUpdate = null;
     private Consumer<CameraUpdate> mPoseConsumer = null;
 
     /**
@@ -214,7 +214,7 @@ public class T265Camera {
         start(
                 (update) -> {
                     synchronized (mUpdateMutex) {
-                        mLastRecievedUpdate = update;
+                        mLastReceivedUpdate = update;
                     }
                 });
     }
@@ -249,7 +249,7 @@ public class T265Camera {
         }
 
         synchronized (mUpdateMutex) {
-            mLastRecievedUpdate = null;
+            mLastReceivedUpdate = null;
         }
 
         mPoseConsumer = poseConsumer;
@@ -275,13 +275,13 @@ public class T265Camera {
      */
     public CameraUpdate getLastReceivedCameraUpdate() {
         synchronized (mUpdateMutex) {
-            if (mLastRecievedUpdate == null) {
+            if (mLastReceivedUpdate == null) {
                 Log.w(
                         kLogTag,
                         "Attempt to get last received update before any updates have been received; are you using the wrong T265Camera::start overload, or is the camera not initialized yet or busy?");
                 return new CameraUpdate(new Pose2d(), new Pose2d(), PoseConfidence.Failed);
             }
-            return mLastRecievedUpdate;
+            return mLastReceivedUpdate;
         }
     }
 
@@ -345,7 +345,7 @@ public class T265Camera {
     public synchronized void setPose(Pose2d newPose) {
         synchronized (mUpdateMutex) {
             mOriginOffset = PoseMath.relativeTo(
-                    newPose, mLastRecievedUpdate == null ? new Pose2d() : mLastRecievedUpdate.pose
+                    newPose, mLastReceivedUpdate == null ? new Pose2d() : mLastReceivedUpdate.pose
             );
         }
     }
