@@ -47,7 +47,7 @@ JNIEXPORT void JNICALL Java_com_spartronics4915_lib_T265Camera_free(JNIEnv *,
  * Method:    setOdometryInfo
  * Signature: (FFFD)V
  */
-JNIEXPORT void JNICALL Java_com_spartronics4915_lib_T265Camera_setOdometryInfo(
+JNIEXPORT void JNICALL Java_com_spartronics4915_lib_T265Camera_setOdometryInfoRaw(
     JNIEnv *, jobject, jfloat, jfloat, jfloat, jdouble);
 
 /*

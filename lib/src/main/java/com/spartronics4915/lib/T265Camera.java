@@ -2,10 +2,8 @@ package com.spartronics4915.lib;
 
 import android.content.Context;
 import android.util.Log;
-import com.arcrobotics.ftclib.geometry.Pose2d;
-import com.arcrobotics.ftclib.geometry.Rotation2d;
-import com.arcrobotics.ftclib.geometry.Transform2d;
-import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
+
+import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.RsContext;
 import com.intel.realsense.librealsense.UsbUtilities;
@@ -25,8 +23,9 @@ import java.util.function.Consumer;
  * <p>The coordinate system is as follows: + X == Robot forwards + Y == Robot left (left is from the
  * perspective of a viewer standing behind the robot)
  *
- * <p>All distance units are meters. All time units are seconds.
+ * <p>All distance units are inches. All time units are seconds.
  */
+@SuppressWarnings("unused")
 public class T265Camera {
     private static final String kLogTag = "ftc265";
 
@@ -51,22 +50,23 @@ public class T265Camera {
         }
     }
 
-    public static enum PoseConfidence {
+    public enum PoseConfidence {
         Failed,
         Low,
         Medium,
         High,
     }
 
+    @SuppressWarnings("unused")
     public static class CameraUpdate {
-        /** The robot's pose in meters. */
+        /** The robot's pose in inches. */
         public final Pose2d pose;
-        /** The robot's velocity in meters/sec and radians/sec. */
-        public final ChassisSpeeds velocity;
+        /** The robot's velocity in inches/sec and radians/sec. */
+        public final Pose2d velocity;
 
         public final PoseConfidence confidence;
 
-        public CameraUpdate(Pose2d pose, ChassisSpeeds velocity, PoseConfidence confidence) {
+        public CameraUpdate(Pose2d pose, Pose2d velocity, PoseConfidence confidence) {
             this.pose = pose;
             this.velocity = velocity;
             this.confidence = confidence;
@@ -82,7 +82,7 @@ public class T265Camera {
 
     // Protected by a mutex on this
     private boolean mIsStarted = false;
-    private Transform2d mRobotOffset;
+    private Pose2d mRobotOffset;
     private Pose2d mOriginOffset = new Pose2d();
 
     // Protected by mUpdateMutex
@@ -98,7 +98,7 @@ public class T265Camera {
      * @param odometryCovariance Covariance of the odometry input when doing sensor fusion (you
      *     probably want to tune this).
      */
-    public T265Camera(Transform2d robotOffset, double odometryCovariance, Context appContext) {
+    public T265Camera(Pose2d robotOffset, double odometryCovariance, Context appContext) {
         this(robotOffset, odometryCovariance, "", appContext);
     }
 
@@ -106,14 +106,14 @@ public class T265Camera {
      * This method constructs a T265 camera and sets it up with the right info. {@link
      * T265Camera#start start} will not be called, you must call it yourself.
      *
-     * @param robotOffsetMeters Offset of the center of the robot from the center of the camera.
-     *     Units are meters.
+     * @param robotOffsetInches Offset of the center of the robot from the center of the camera.
+     *     Units are inches.
      * @param odometryCovariance Covariance of the odometry input when doing sensor fusion (you
      *     probably want to tune this)
      * @param relocMapPath path (including filename) to a relocalization map to load.
      */
     public T265Camera(
-            Transform2d robotOffsetMeters,
+            Pose2d robotOffsetInches,
             double odometryCovariance,
             String relocMapPath,
             Context appContext) {
@@ -146,12 +146,12 @@ public class T265Camera {
                                 mHasSeenDeviceBefore |= ptr != 0;
                                 mNativeCameraObjectPointer = ptr;
                             }
-                            setOdometryInfo(
-                                    (float) robotOffsetMeters.getTranslation().getX(),
-                                    (float) robotOffsetMeters.getTranslation().getY(),
-                                    (float) robotOffsetMeters.getRotation().getRadians(),
+                            setOdometryInfoRaw(
+                                    (float) robotOffsetInches.getX(),
+                                    (float) robotOffsetInches.getY(),
+                                    (float) robotOffsetInches.getHeading(),
                                     odometryCovariance);
-                            mRobotOffset = robotOffsetMeters;
+                            mRobotOffset = robotOffsetInches;
 
                             Log.d(kLogTag, "Native code should be done initializing");
                         } catch (Exception e) {
@@ -232,7 +232,7 @@ public class T265Camera {
      *
      * @param poseConsumer A method to be called every time we receive a pose from <i>from a
      *     different thread</i>! You must synchronize memory access across threads!
-     *     <p>Received poses are in meters.
+     *     <p>Received poses are in inches.
      * @throws RuntimeException This will throw if the camera isn't connected. This will never throw
      *     following one successful connection; we will instead continue to try and reconnect.
      */
@@ -279,7 +279,7 @@ public class T265Camera {
                 Log.w(
                         kLogTag,
                         "Attempt to get last received update before any updates have been received; are you using the wrong T265Camera::start overload, or is the camera not initialized yet or busy?");
-                return new CameraUpdate(new Pose2d(), new ChassisSpeeds(), PoseConfidence.Failed);
+                return new CameraUpdate(new Pose2d(), new Pose2d(), PoseConfidence.Failed);
             }
             return mLastRecievedUpdate;
         }
@@ -302,20 +302,39 @@ public class T265Camera {
     public native void exportRelocalizationMap(String path);
 
     /**
+     * Set the odometry info for the camera.
+     * @param robotOffset The offset of the robot from the camera.
+     * @param measurementCovariance The covariance of the odometry measurements.
+     */
+    public synchronized void setOdometryInfo(Pose2d robotOffset, double measurementCovariance) {
+        // Protecting this because we don't want to set this while we're reading a pose update.
+        //  I'm not sure if this is actually necessary, but it's probably safer.
+        synchronized (mUpdateMutex) {
+            setOdometryInfoRaw(
+                    (float) robotOffset.getX(),
+                    (float) robotOffset.getY(),
+                    (float) robotOffset.getHeading(),
+                    measurementCovariance);
+        }
+    }
+
+    /**
      * Sends robot velocity as computed from wheel encoders. Note that the X and Y axis orientations
      * are determined by how you set the robotOffset in the constructor.
      *
-     * @param velocityXMetersPerSecond The robot-relative velocity along the X axis in meters/sec.
-     * @param velocityYMetersPerSecond The robot-relative velocity along the Y axis in meters/sec.
+     * @param velocityXInchesPerSecond The robot-relative velocity along the X axis in inches/sec.
+     * @param velocityYInchesPerSecond The robot-relative velocity along the Y axis in inches/sec.
      */
-    public void sendOdometry(double velocityXMetersPerSecond, double velocityYMetersPerSecond) {
+    public void sendOdometry(double velocityXInchesPerSecond, double velocityYInchesPerSecond) {
         synchronized (mPointerMutex) {
             if (mNativeCameraObjectPointer == 0)
                 Log.w(kLogTag, "Can't send odometry while camera is busy or not initialized yet");
         }
 
         // Only 1 odometry sensor is supported for now (index 0)
-        sendOdometryRaw(0, (float) velocityXMetersPerSecond, (float) velocityYMetersPerSecond);
+        sendOdometryRaw(0,
+                (float) velocityXInchesPerSecond,
+                (float) velocityYInchesPerSecond);
     }
 
     /**
@@ -325,9 +344,9 @@ public class T265Camera {
      */
     public synchronized void setPose(Pose2d newPose) {
         synchronized (mUpdateMutex) {
-            mOriginOffset =
-                    newPose.relativeTo(
-                            mLastRecievedUpdate == null ? new Pose2d() : mLastRecievedUpdate.pose);
+            mOriginOffset = PoseMath.relativeTo(
+                    newPose, mLastRecievedUpdate == null ? new Pose2d() : mLastRecievedUpdate.pose
+            );
         }
     }
 
@@ -337,7 +356,7 @@ public class T265Camera {
      */
     public native void free();
 
-    private native void setOdometryInfo(
+    private native void setOdometryInfoRaw(
             float robotOffsetX,
             float robotOffsetY,
             float robotOffsetRads,
@@ -356,12 +375,13 @@ public class T265Camera {
         // is not a directional transformation.
         // Then we transform the pose our camera is giving us so that it reports is
         // the robot's pose, not the camera's. This is a directional transformation.
-        final Pose2d currentPose =
+        final Pose2d currentPose = PoseMath.transformBy(
                 new Pose2d(
-                                x - mRobotOffset.getTranslation().getX(),
-                                y - mRobotOffset.getTranslation().getY(),
-                                new Rotation2d(radians))
-                        .transformBy(mRobotOffset);
+                        x - mRobotOffset.getX(),
+                        y - mRobotOffset.getY(),
+                        radians),
+                mRobotOffset
+        );
 
         if (!mIsStarted) return;
 
@@ -389,12 +409,13 @@ public class T265Camera {
                                 + "\" passed from native code");
         }
 
-        final Pose2d transformedPose =
-                mOriginOffset.transformBy(
-                        new Transform2d(currentPose.getTranslation(), currentPose.getRotation()));
+        final Pose2d transformedPose = PoseMath.transformBy(
+                mOriginOffset,
+                currentPose
+        );
 
         mPoseConsumer.accept(
-                new CameraUpdate(transformedPose, new ChassisSpeeds(dx, dy, dtheta), confidence));
+                new CameraUpdate(transformedPose, new Pose2d(dx, dy, dtheta), confidence));
     }
 
     /** Thrown if something goes wrong in the native code */

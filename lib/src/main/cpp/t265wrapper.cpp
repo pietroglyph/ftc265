@@ -388,7 +388,7 @@ void importRelocalizationMap(const char *path, rs2::pose_sensor *poseSensor) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_spartronics4915_lib_T265Camera_setOdometryInfo(
+Java_com_spartronics4915_lib_T265Camera_setOdometryInfoRaw(
     JNIEnv *env, jobject thisObj, jfloat xOffset, jfloat yOffset,
     jfloat angOffset, jdouble measureCovariance) {
   try {
