@@ -13,6 +13,7 @@ android {
 
     defaultConfig {
         minSdkVersion 24
+        //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 29
         versionCode 14 // This number just needs to increase monotonically after every version change
         versionName "2.1.9"
@@ -73,17 +74,20 @@ configurations {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation('org.ftclib.ftclib:core:1.2.0') { // For geometry classes
-        exclude group: 'org.ejml', module: 'ejml-all'
-    }
+    // purely for the Pose2d class
+    implementation 'com.acmerobotics.roadrunner:core:0.5.3'
 
-    testImplementation 'junit:junit:4.12'
+    // we need this for the startup hooks
+    implementation 'org.firstinspires.ftc:FtcCommon:7.0.0'
+
+    testImplementation 'junit:junit:4.13.1'
 
     // So we can use Android framework code in unit tests
-    testImplementation 'androidx.test:core:1.3.0'
-    testImplementation 'androidx.test.ext:junit:1.1.2'
-    testImplementation 'androidx.test:runner:1.3.0'
-    testImplementation 'androidx.test:rules:1.3.0'
+    testImplementation 'androidx.test:core:1.4.0'
+    testImplementation 'androidx.test.ext:junit:1.1.3'
+    testImplementation 'androidx.test:runner:1.4.0'
+    testImplementation 'androidx.test:rules:1.4.0'
+    testImplementation project(path: ':lib')
 
     def rsVersion = '2.41.1-ftc265' // Change string to bump version
     downloadSo 'com.intel.realsense:librealsense:' + rsVersion + '@aar'
@@ -119,9 +123,9 @@ afterEvaluate {
                 artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")
 
                 pom.withXml {
-                    def dependenciesNode = asNode().appendNode('dependencies')
+                    def dependenciesNode = asNode(null).appendNode('dependencies')
                     configurations.implementation.allDependencies.each {
-                        if (it.group != null && (it.name != null || "unspecified".equals(it.name)) && it.version != null) {
+                        if (it.group != null && (it.name != null || "unspecified" == it.name) && it.version != null) {
                             def dependencyNode = dependenciesNode.appendNode('dependency')
                             dependencyNode.appendNode('groupId', it.group)
                             dependencyNode.appendNode('artifactId', it.name)

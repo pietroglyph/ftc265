@@ -1,0 +1,4 @@
+# ignore files that ryleu's Android Studio creates
+compiler.xml
+discord.xml
+jarRepositories.xml
