@@ -2,7 +2,6 @@ package com.spartronics4915.lib;
 
 import android.content.Context;
 import android.util.Log;
-
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.RsContext;
@@ -303,6 +302,7 @@ public class T265Camera {
 
     /**
      * Set the odometry info for the camera.
+     *
      * @param robotOffset The offset of the robot from the camera.
      * @param measurementCovariance The covariance of the odometry measurements.
      */
@@ -332,9 +332,7 @@ public class T265Camera {
         }
 
         // Only 1 odometry sensor is supported for now (index 0)
-        sendOdometryRaw(0,
-                (float) velocityXInchesPerSecond,
-                (float) velocityYInchesPerSecond);
+        sendOdometryRaw(0, (float) velocityXInchesPerSecond, (float) velocityYInchesPerSecond);
     }
 
     /**
@@ -344,9 +342,10 @@ public class T265Camera {
      */
     public synchronized void setPose(Pose2d newPose) {
         synchronized (mUpdateMutex) {
-            mOriginOffset = PoseMath.relativeTo(
-                    newPose, mLastReceivedUpdate == null ? new Pose2d() : mLastReceivedUpdate.pose
-            );
+            mOriginOffset =
+                    PoseMath.relativeTo(
+                            newPose,
+                            mLastReceivedUpdate == null ? new Pose2d() : mLastReceivedUpdate.pose);
         }
     }
 
@@ -375,13 +374,10 @@ public class T265Camera {
         // is not a directional transformation.
         // Then we transform the pose our camera is giving us so that it reports is
         // the robot's pose, not the camera's. This is a directional transformation.
-        final Pose2d currentPose = PoseMath.transformBy(
-                new Pose2d(
-                        x - mRobotOffset.getX(),
-                        y - mRobotOffset.getY(),
-                        radians),
-                mRobotOffset
-        );
+        final Pose2d currentPose =
+                PoseMath.transformBy(
+                        new Pose2d(x - mRobotOffset.getX(), y - mRobotOffset.getY(), radians),
+                        mRobotOffset);
 
         if (!mIsStarted) return;
 
@@ -409,10 +405,7 @@ public class T265Camera {
                                 + "\" passed from native code");
         }
 
-        final Pose2d transformedPose = PoseMath.transformBy(
-                mOriginOffset,
-                currentPose
-        );
+        final Pose2d transformedPose = PoseMath.transformBy(mOriginOffset, currentPose);
 
         mPoseConsumer.accept(
                 new CameraUpdate(transformedPose, new Pose2d(dx, dy, dtheta), confidence));

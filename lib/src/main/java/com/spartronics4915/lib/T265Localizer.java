@@ -1,17 +1,14 @@
 package com.spartronics4915.lib;
 
+import static com.spartronics4915.lib.T265StartupHook.slamera;
+
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.localization.Localizer;
-
-import static com.spartronics4915.lib.T265StartupHook.slamera;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Localizer for the T265 camera.
- */
+/** Localizer for the T265 camera. */
 public class T265Localizer implements Localizer {
     public interface SendOdometryFunction {
         Vector2d run();
@@ -21,6 +18,7 @@ public class T265Localizer implements Localizer {
 
     /**
      * Get the current pose of the T265.
+     *
      * @return the pose
      */
     @NotNull
@@ -31,6 +29,7 @@ public class T265Localizer implements Localizer {
 
     /**
      * Set the pose of the T265 camera.
+     *
      * @param pose2d the pose
      */
     @Override
@@ -40,6 +39,7 @@ public class T265Localizer implements Localizer {
 
     /**
      * Get the current velocity of the T265.
+     *
      * @return the velocity
      */
     @Nullable
@@ -48,9 +48,7 @@ public class T265Localizer implements Localizer {
         return slamera.getLastReceivedCameraUpdate().velocity;
     }
 
-    /**
-     * Send odometry data to the T265 if the callback is set.
-     */
+    /** Send odometry data to the T265 if the callback is set. */
     @Override
     public void update() {
         // Make sure the callback is set
@@ -62,6 +60,7 @@ public class T265Localizer implements Localizer {
 
     /**
      * Set a callback to send odometry data to the T265.
+     *
      * @param sendOdometryCallback the callback
      */
     public void setSendOdometryCallback(SendOdometryFunction sendOdometryCallback) {
