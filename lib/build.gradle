@@ -79,6 +79,7 @@ dependencies {
 
     // we need this for the startup hooks
     implementation 'org.firstinspires.ftc:FtcCommon:7.0.0'
+    implementation 'org.firstinspires.ftc:RobotCore:7.0.0'
 
     testImplementation 'junit:junit:4.13.1'
 
