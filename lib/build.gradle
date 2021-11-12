@@ -76,7 +76,7 @@ configurations {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    // purely for the Pose2d class
+    // for the Pose2d, the Vector2d, and the Localizer classes
     implementation 'com.acmerobotics.roadrunner:core:0.5.3'
 
     // we need this for the startup hooks
