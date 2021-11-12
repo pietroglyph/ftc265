@@ -110,7 +110,7 @@ you should get a permissions prompt on first run.
 method that takes a `Consumer<CameraUpdate>` (a camera update callback) then you won't be able to
 use `getLastRecievedCameraUpdate` unless you use the overload of `start` that takes no parameters.~~
 
-This should no longer happen in v3.0.0 and up. Try asking in the Discord server.
+This should no longer happen in v3 and up. Try asking in the Discord server.
 
 ## FAQs
 
@@ -139,7 +139,7 @@ Yes. This should work out of the box on the Control Hub.
 Yes.
 
 ### Why do you use RoadRunner geometry classes instead of library X's geometry classes?
-Unfortunately, there is no canonical set of geometry classes (`Pose2d`, `Vector2d`, etc.) in FTC
+Unfortunately, there is no canonical set of geometry classes (`Pose2d`, `Vector2d`, etc.) in FTC,
 so I just had to pick a set to use. I originally picked the FTCLib geometry classes because they're
 directly copied from WPILib (which I'm quite familiar with). [Ryleu](https://github.com/ryleu) ended
 up changing this to use the RoadRunner classes for v3.0 and up for better compatibility with
