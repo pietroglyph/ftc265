@@ -5,26 +5,12 @@ import static com.spartronics4915.lib.T265Hooks.slamera;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.localization.Localizer;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /** Localizer for the T265 camera. */
 @SuppressWarnings("unused")
-public class T265Localizer implements Localizer, Runnable {
-    // Lock so we can only have one update at a time
-    private final Object updateMutex = new Object();
-    /**
-     * This will update the T265's odometry, among other things, separately from the main thread.
-     */
-    @Override
-    public void run() {
-        // We only want this to run while the op mode is active so the GC can do its thing.
-        while (T265Hooks.isOpModeRunning()) {
-            update();
-        }
-    }
-
+public class T265Localizer implements Localizer {
     // Interface so we can pass a callback as a parameter
     public interface SendOdometryFunction {
         Vector2d run();
@@ -36,7 +22,7 @@ public class T265Localizer implements Localizer, Runnable {
     private T265Camera.CameraUpdate lastReceivedCameraUpdate;
 
     /**
-     * Get the current pose of the T265.
+     * Get the current pose of the T265. This only updates when update() is called.
      *
      * @return the pose
      */
@@ -77,19 +63,17 @@ public class T265Localizer implements Localizer, Runnable {
         return lastReceivedCameraUpdate.confidence;
     }
 
-    /** Send odometry data to the T265 if the callback is set. */
+    /** Update the T265. */
     @Override
     public synchronized void update() {
-        synchronized (updateMutex) {
-            // Make sure the callback is set
-            if (sendOdometryCallback != null) {
-                Vector2d odometry = sendOdometryCallback.run();
-                slamera.sendOdometry(odometry.getX(), odometry.getY());
-            }
-
-            // Get the latest update from the T265
-            lastReceivedCameraUpdate = slamera.getLastReceivedCameraUpdate();
+        // Make sure the callback is set
+        if (sendOdometryCallback != null) {
+            Vector2d odometry = sendOdometryCallback.run();
+            slamera.sendOdometry(odometry.getX(), odometry.getY());
         }
+
+        // Get the latest update from the T265
+        lastReceivedCameraUpdate = slamera.getLastReceivedCameraUpdate();
     }
 
     /**
@@ -99,21 +83,5 @@ public class T265Localizer implements Localizer, Runnable {
      */
     public void setSendOdometryCallback(SendOdometryFunction sendOdometryCallback) {
         this.sendOdometryCallback = sendOdometryCallback;
-    }
-
-    /**
-     * Create a new T265Localizer. We actually don't need the hardware map, but it's here for
-     * consistency with other localizers
-     *
-     * @param hardwareMap the hardware map from the op mode
-     */
-    public T265Localizer(HardwareMap hardwareMap) {
-        this();
-    }
-
-    /** Create a new T265Localizer. */
-    public T265Localizer() {
-        Thread updateThread = new Thread(this, "T265 Update");
-        updateThread.start();
     }
 }
