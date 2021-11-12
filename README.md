@@ -115,7 +115,7 @@ This should no longer happen in v3.0.0 and up. Try asking in the Discord server.
 ## FAQs
 
 ### Is this legal?
-According to[this GDC clarification](https://ftcforum.firstinspires.org//forum/first-tech-challenge-skystone-presented-by-qualcomm-game-q-a-forum/robot-inspection-and-build-rules-aa/answers-raw-and-post-processed-materials/74292-sensors?p=75207#post75207), yes.
+According to [this GDC clarification](https://ftc-qa.firstinspires.org/qa/58), yes.
 
 If that doesn't convince you, please take the following into account:
  1. In the opinion of the author, this is no more of a coprocessor than a servo. The T265 has an ASIC just like a servo
