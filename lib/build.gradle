@@ -18,6 +18,8 @@ android {
         versionCode 15 // This number just needs to increase monotonically after every version change
         versionName "3.0.0"
 
+        setProperty("archivesBaseName","${rootProject.getName()}-${versionName}")
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         consumerProguardFiles 'consumer-rules.pro'
@@ -121,7 +123,7 @@ afterEvaluate {
                 groupId = "com.spartronics4915.lib"
                 artifactId "ftc265"
                 version = android.defaultConfig.versionName
-                artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")
+                artifact("$buildDir/outputs/aar/${rootProject.getName()}-${android.defaultConfig.versionName}-release.aar")
 
                 pom.withXml {
                     def dependenciesNode = asNode(null).appendNode('dependencies')
