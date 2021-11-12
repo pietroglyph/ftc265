@@ -3,6 +3,7 @@ package com.spartronics4915.lib;
 import android.content.Context;
 import android.util.Log;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.intel.realsense.librealsense.DeviceListener;
 import com.intel.realsense.librealsense.RsContext;
 import com.intel.realsense.librealsense.UsbUtilities;
@@ -306,16 +307,42 @@ public class T265Camera {
      * @param robotOffset The offset of the robot from the camera.
      * @param measurementCovariance The covariance of the odometry measurements.
      */
-    public synchronized void setOdometryInfo(Pose2d robotOffset, double measurementCovariance) {
+    public void setOdometryInfo(Pose2d robotOffset, double measurementCovariance) {
+        setOdometryInfo(
+                (float) robotOffset.getX(),
+                (float) robotOffset.getY(),
+                (float) robotOffset.getHeading(),
+                (float) measurementCovariance);
+    }
+
+    /**
+     * Set the odometry info for the camera.
+     *
+     * @param robotOffsetX The x offset of the robot from the camera.
+     * @param robotOffsetY The y offset of the robot from the camera.
+     * @param robotOffsetHeading The heading offset of the robot from the camera.
+     * @param measurementCovariance The covariance of the odometry measurements.
+     */
+    public void setOdometryInfo(
+            float robotOffsetX,
+            float robotOffsetY,
+            float robotOffsetHeading,
+            float measurementCovariance) {
         // Protecting this because we don't want to set this while we're reading a pose update.
-        //  I'm not sure if this is actually necessary, but it's probably safer.
         synchronized (mUpdateMutex) {
             setOdometryInfoRaw(
-                    (float) robotOffset.getX(),
-                    (float) robotOffset.getY(),
-                    (float) robotOffset.getHeading(),
-                    measurementCovariance);
+                    robotOffsetX, robotOffsetY, robotOffsetHeading, measurementCovariance);
         }
+    }
+
+    /**
+     * Sends robot velocity as computed from wheel encoders. Note that the X and Y axis orientations
+     * are determined by how you set the robotOffset (which you really should do).
+     *
+     * @param velocityInchesPerSecond The robot-relative velocity in inches/sec.
+     */
+    public void sendOdometry(Vector2d velocityInchesPerSecond) {
+        sendOdometry(velocityInchesPerSecond.getX(), velocityInchesPerSecond.getY());
     }
 
     /**
