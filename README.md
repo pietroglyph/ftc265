@@ -136,7 +136,10 @@ FTC-field-sized area I consistently got less than 1 inch of error.
 Yes. This should work out of the box on the Control Hub.
 
 ### Does this support importing and exporting relocalization maps?
-Yes.
+Yes. It may be very buggy though, considering that you would need to call `slamera.stop()`, `slamera.free()`,
+then re-construct the `slamera` object with `slamera = new T265Camera(...)`, where you can pass in your map.
+From there, you can call `slamera.start()` to start the camera. Exporting maps is not hard, though you will
+need to restart the camera after exporting.
 
 ### Why do you use RoadRunner geometry classes instead of library X's geometry classes?
 Unfortunately, there is no canonical set of geometry classes (`Pose2d`, `Vector2d`, etc.) in FTC,
