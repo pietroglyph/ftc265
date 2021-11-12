@@ -69,7 +69,7 @@ slamera.setPose(startingPose); // Useful if your robot doesn't start at the fiel
 
 // Now we can grab our last received pose. The camera automatically starts with the app.
 while (true) {
-    slamra.getLastReceivedCameraUpdate();
+    slamera.getLastReceivedCameraUpdate();
 }
 ```
 
