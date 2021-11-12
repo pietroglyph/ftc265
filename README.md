@@ -65,7 +65,7 @@ Pose2d startingPose = new Pose2d();
 
 slamera.setOdometryInfo(cameraToRobot, encoderMeasurementCovariance);
 
-slamra.setPose(startingPose); // Useful if your robot doesn't start at the field-relative origin
+slamera.setPose(startingPose); // Useful if your robot doesn't start at the field-relative origin
 
 // Now we can grab our last received pose. The camera automatically starts with the app.
 while (true) {
