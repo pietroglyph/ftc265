@@ -6,7 +6,8 @@ ftc265 is a plug-and-play Intel RealSense T265 VSLAM camera wrapper for FTC base
 writing a [roboRIO T265 wrapper](https://github.com/Spartronics4915/SpartronicsLib).
 
 ## Installation
-To get started you can either copy the [example project](https://github.com/pietroglyph/FtcRobotController/tree/ftc265-example), or you can install manually.
+To get started you can either copy the
+[example project](https://github.com/pietroglyph/FtcRobotController/tree/ftc265-example), or you can install manually.
 
 ### Manual Installation
 Paste the following into `TeamCode/build.gradle`:
@@ -20,7 +21,8 @@ repositories {
 }
 ```
 
-At the bottom of `TeamCode/build.gradle` add the following (if you have an existing `dependencies` block you can just add the `implementation` line to that dependencies block):
+At the bottom of `TeamCode/build.gradle` add the following (if you have an existing `dependencies` block you can just
+add the `implementation` line to that dependencies block):
 ```gradle
 dependencies {
     // There should be a bunch of implementation configurations here already
@@ -29,7 +31,8 @@ dependencies {
 }
 ```
 
-Finally, set the `sourceCompatibility`, `targetCompatibility`, and `minSdkVersion` in the `build.common.gradle` at the project root if you haven't already:
+Finally, set the `sourceCompatibility`, `targetCompatibility`, and `minSdkVersion` in the `build.common.gradle` at the
+project root if you haven't already:
 ```gradle
 android {
     // NOTE: There will be *way* more things in this file than what's shown here.
@@ -91,8 +94,10 @@ callback-based API available.
 ### My camera doesn't connect
 If you're getting a "No camera connected" exception then you can try a few things:
  1. Connect the camera to a computer running realsense-viewer and make sure that it works there.
- 2. If you're using a USB hub, make sure to plug the hub in first, power the hub on (if applicable), and then connect the camera.
- 3. If you're using the Control Hub and your camera won't connect when you first boot up, try plugging the camera into the USB 2 port on subsequent boots.
+ 2. If you're using a USB hub, make sure to plug the hub in first, power the hub on (if applicable), and then connect
+the camera.
+ 3. If you're using the Control Hub and your camera won't connect when you first boot up, try plugging the camera into
+the USB 2 port on subsequent boots.
  4. If nothing works then you can open an issue or [join the Discord server](https://discord.gg/85hZ4dnBUd).
 
 ### The app hangs when I instantiate a `T265Camera`
@@ -113,8 +118,11 @@ This should no longer happen in v3.0.0 and up. Try asking in the Discord server.
 According to[this GDC clarification](https://ftcforum.firstinspires.org//forum/first-tech-challenge-skystone-presented-by-qualcomm-game-q-a-forum/robot-inspection-and-build-rules-aa/answers-raw-and-post-processed-materials/74292-sensors?p=75207#post75207), yes.
 
 If that doesn't convince you, please take the following into account:
- 1. In the opinion of the author, this is no more of a coprocessor than a servo. The T265 has an ASIC just like a servo might have a microcontroller, but critically, neither of these are reprogrammable. Similar devices that do offboard nonprogrammable video processing have been allowed (e.g. the Pixy cam, which was cited in the GDC clarification linked above.)
- 2. This fits under the broad category of UVC-compatible devices.
+ 1. In the opinion of the author, this is no more of a coprocessor than a servo. The T265 has an ASIC just like a servo
+might have a microcontroller, but critically, neither of these are reprogrammable. Similar devices that do offboard
+nonprogrammable video processing have been allowed (e.g. the Pixy cam, which was cited in the GDC clarification linked
+above.)
+ 3. This fits under the broad category of UVC-compatible devices.
 
 ### Is the T265 accurate in an FTC context?
 In my testing, yes. I used this in-season at (more demanding) FRC speeds, and when testing on an
