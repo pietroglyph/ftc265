@@ -6,7 +6,8 @@ public class PoseMath {
     /**
      * Transforms a Pose2d by another Pose2d.
      *
-     * <a href="https://www.desmos.com/calculator/0x7xoeiudh">A simulator for this behavior can be found here.</a>
+     * <p><a href="https://www.desmos.com/calculator/0x7xoeiudh">A simulator for this behavior can
+     * be found here.</a>
      *
      * @param t The first pose.
      * @param b The pose to transform the first pose by.
