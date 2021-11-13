@@ -35,8 +35,6 @@ static_assert(sizeof(jlong) >= sizeof(void *));
 constexpr auto originNodeName = "origin";
 constexpr auto exportRelocMapStopDelay = std::chrono::seconds(10);
 constexpr auto logTag = "ftc265";
-constexpr float mToIn = 254.0f;
-constexpr float inToM = 1.0f / 254.0f;
 
 // We cache all of these because we can
 jclass holdingClass = nullptr; // This should always be the T265Camera jclass
@@ -230,10 +228,10 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj,
           throw std::runtime_error("consumePoseUpdate method doesn't exist");
 
         auto velocityMagnitude =
-            hypotf(-poseData.velocity.z * mToIn, -poseData.velocity.x * mToIn);
+            hypotf(-poseData.velocity.z, -poseData.velocity.x);
         env->CallVoidMethod(devAndSensors->globalThis, callbackMethodID,
-                            -poseData.translation.z * mToIn, -poseData.translation.x * mToIn,
-                            yaw, -poseData.velocity.z * mToIn, -poseData.velocity.x * mToIn,
+                            -poseData.translation.z, -poseData.translation.x,
+                            yaw, -poseData.velocity.z, -poseData.velocity.x,
                             poseData.angular_velocity.y,
                             poseData.tracker_confidence);
 
@@ -291,7 +289,7 @@ Java_com_spartronics4915_lib_T265Camera_sendOdometryRaw(
     std::scoped_lock lk(devAndSensors->frameNumMutex);
     devAndSensors->wheelOdometrySensor->send_wheel_odometry(
         sensorId, devAndSensors->lastRecvdFrameNum,
-        rs2_vector{.x = -yVel * inToM, .y = 0.0, .z = -xVel * inToM});
+        rs2_vector{.x = -yVel, .y = 0.0, .z = -xVel});
   } catch (std::exception &e) {
     env->ThrowNew(exception, e.what());
   }
@@ -396,9 +394,9 @@ Java_com_spartronics4915_lib_T265Camera_setOdometryInfoRaw(
 
     // std::format cannot come soon enough :(
     auto size = snprintf(nullptr, 0, odometryConfig, measureCovariance,
-                         -yOffset * inToM, -xOffset * inToM, angOffset);
+                         -yOffset, -xOffset, angOffset);
     char buf[size];
-    snprintf(buf, size, odometryConfig, measureCovariance, -yOffset * inToM, -xOffset * inToM,
+    snprintf(buf, size, odometryConfig, measureCovariance, -yOffset, -xOffset,
              angOffset);
     auto vecBuf = std::vector<uint8_t>(buf, buf + size);
 

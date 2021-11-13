@@ -29,6 +29,9 @@ import java.util.function.Consumer;
 public class T265Camera {
     private static final String kLogTag = "ftc265";
 
+    private static final float inToM = 0.0254f;
+    private static final float mToIn = 1.0f / 0.0254f;
+
     private static UnsatisfiedLinkError mLinkError = null;
 
     static {
@@ -67,8 +70,12 @@ public class T265Camera {
         public final PoseConfidence confidence;
 
         public CameraUpdate(Pose2d pose, Pose2d velocity, PoseConfidence confidence) {
-            this.pose = pose;
-            this.velocity = velocity;
+            this.pose = new Pose2d(pose.getX() * mToIn, pose.getY() * mToIn, pose.getHeading());
+            this.velocity =
+                    new Pose2d(
+                            velocity.getX() * mToIn,
+                            velocity.getY() * mToIn,
+                            velocity.getHeading());
             this.confidence = confidence;
         }
     }
@@ -147,8 +154,8 @@ public class T265Camera {
                                 mNativeCameraObjectPointer = ptr;
                             }
                             setOdometryInfoRaw(
-                                    (float) robotOffsetInches.getX(),
-                                    (float) robotOffsetInches.getY(),
+                                    (float) robotOffsetInches.getX() * inToM,
+                                    (float) robotOffsetInches.getY() * inToM,
                                     (float) robotOffsetInches.getHeading(),
                                     odometryCovariance);
                             mRobotOffset = robotOffsetInches;
@@ -331,7 +338,10 @@ public class T265Camera {
         // Protecting this because we don't want to set this while we're reading a pose update.
         synchronized (mUpdateMutex) {
             setOdometryInfoRaw(
-                    robotOffsetX, robotOffsetY, robotOffsetHeading, measurementCovariance);
+                    robotOffsetX * inToM,
+                    robotOffsetY * inToM,
+                    robotOffsetHeading,
+                    measurementCovariance);
         }
     }
 
@@ -359,7 +369,10 @@ public class T265Camera {
         }
 
         // Only 1 odometry sensor is supported for now (index 0)
-        sendOdometryRaw(0, (float) velocityXInchesPerSecond, (float) velocityYInchesPerSecond);
+        sendOdometryRaw(
+                0,
+                (float) velocityXInchesPerSecond * inToM,
+                (float) velocityYInchesPerSecond * inToM);
     }
 
     /**
