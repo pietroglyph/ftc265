@@ -17,17 +17,29 @@ public class T265OpModeListener implements OpModeManagerNotifier.Notifications {
      */
     @Override
     public void onOpModePreInit(OpMode opMode) {
-        Log.d(kLogTag, "Checking if the T265 needs to be initialized...");
-        if (slamera == null) {
-            Log.i(kLogTag, "Initializing T265AutoInit.slamera");
-            slamera = new T265Camera(new Pose2d(), 0.8, opMode.hardwareMap.appContext);
+        boolean init = true;
+        String mapPath = "";
+        T265Config config = opMode.getClass().getAnnotation(T265Config.class);
+
+        if (config != null) {
+            init = config.autoInit();
+            mapPath = config.mapPath();
         }
-        Log.d(kLogTag, "Checking if the T265 needs to be started...");
+
+        if (!init) {
+            Log.i(kLogTag, "Auto init is disabled");
+            return;
+        }
+
+        Log.i(kLogTag, "Auto init is enabled, initializing...");
+
+        if (slamera == null) {
+            slamera = new T265Camera(new Pose2d(), 0.8, mapPath, opMode.hardwareMap.appContext);
+        }
         if (!slamera.isStarted()) {
-            Log.i(kLogTag, "Starting T265AutoInit.slamera");
             slamera.start();
         }
-        Log.i(kLogTag, "T265AutoInit.slamera should be ready to use!");
+        slamera.setPose(new Pose2d());
     }
 
     @Override
