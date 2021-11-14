@@ -337,14 +337,11 @@ public class T265Camera {
             float robotOffsetY,
             float robotOffsetHeading,
             float measurementCovariance) {
-        // Protecting this because we don't want to set this while we're reading a pose update.
-        synchronized (mUpdateMutex) {
-            setOdometryInfoRaw(
-                    robotOffsetX * inToM,
-                    robotOffsetY * inToM,
-                    robotOffsetHeading,
-                    measurementCovariance);
-        }
+        setOdometryInfoRaw(
+                robotOffsetX * inToM,
+                robotOffsetY * inToM,
+                robotOffsetHeading,
+                measurementCovariance);
     }
 
     /**
