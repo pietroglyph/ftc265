@@ -26,13 +26,21 @@ public class PoseMath {
     /**
      * Returns the other pose relative to the current pose.
      *
-     * @param initial The initial pose. (T)
-     * @param other The pose that is the origin of the new coordinate frame that the initial pose
-     *     will be converted into. (R)
+     * @param t The initial pose.
+     * @param r The pose that is the origin of the new coordinate frame that the initial pose will
+     *     be converted into.
      * @return The initial pose relative to the new origin pose.
      */
-    public static Pose2d relativeTo(Pose2d initial, Pose2d other) {
-        // TODO: implement this math
-        throw new UnsupportedOperationException("setPose is not implemented");
+    public static Pose2d relativeTo(Pose2d t, Pose2d r) {
+        double cos_t = Math.cos(t.getHeading());
+        double sin_t = Math.sin(t.getHeading());
+        double tan_t = Math.tan(t.getHeading());
+
+        return new Pose2d(
+                (r.getX() - t.getX())
+                        + (r.getY() - t.getY()) * (sin_t / cos_t) / (1 + tan_t * tan_t) / cos_t,
+                (r.getY() - t.getY())
+                        - (r.getX() + t.getX()) * (sin_t / cos_t) / (1 + tan_t * tan_t) / cos_t,
+                r.getHeading() - t.getHeading());
     }
 }
