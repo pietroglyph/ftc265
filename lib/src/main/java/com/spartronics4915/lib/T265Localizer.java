@@ -1,6 +1,6 @@
 package com.spartronics4915.lib;
 
-import static com.spartronics4915.lib.T265Hooks.slamera;
+import static com.spartronics4915.lib.T265AutoInit.slamera;
 
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
