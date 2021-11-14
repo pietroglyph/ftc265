@@ -9,5 +9,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface T265Config {
     boolean autoInit() default true;
+
     String mapPath() default "";
 }
