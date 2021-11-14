@@ -210,9 +210,9 @@ public class T265Camera {
      * data. This will NOT reset the camera's pose.
      *
      * <p>This will not restart the camera following {@link
-     * T265Camera#exportRelocalizationMap(String)}. You will have to call {@link T265Camera#free()}
-     * and make a new {@link T265Camera}. This is related to what appears to be a bug in
-     * librealsense.
+     * T265Camera#exportRelocalizationMap(String, int)}. You will have to call {@link
+     * T265Camera#free()} and make a new {@link T265Camera}. This is related to what appears to be a
+     * bug in librealsense.
      *
      * @throws RuntimeException This will throw if the camera isn't connected or the camera has
      *     already been started.
@@ -233,9 +233,9 @@ public class T265Camera {
      * then you should call {@link T265Camera#start()}.
      *
      * <p>This will not restart the camera following {@link
-     * T265Camera#exportRelocalizationMap(String)}. You will have to call {@link T265Camera#free()}
-     * and make a new {@link T265Camera}. This is related to what appears to be a bug in
-     * librealsense.
+     * T265Camera#exportRelocalizationMap(String, int)}. You will have to call {@link
+     * T265Camera#free()} and make a new {@link T265Camera}. This is related to what appears to be a
+     * bug in librealsense.
      *
      * @param poseConsumer A method to be called every time we receive a pose from <i>from a
      *     different thread</i>! You must synchronize memory access across threads!
@@ -305,8 +305,10 @@ public class T265Camera {
      * Fix that.
      *
      * @param path Path (with filename) to export to
+     * @param stopDelay Time (in seconds) to wait before assuming the camera is ready to export This
+     *     is gross, but there is no way to be sure the camera is ready.
      */
-    public native void exportRelocalizationMap(String path);
+    public native void exportRelocalizationMap(String path, int stopDelay);
 
     /**
      * Set the odometry info for the camera.

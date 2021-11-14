@@ -52,7 +52,7 @@ public class TestT265Camera {
             System.out.println("Got pose data, exporting relocalization map to java.io.tmpdir...");
             Path mapPath =
                     Paths.get(System.getProperty("java.io.tmpdir"), "map.bin").toAbsolutePath();
-            cam.exportRelocalizationMap(mapPath.toString());
+            cam.exportRelocalizationMap(mapPath.toString(), 10);
 
             if (mapPath.toFile().length() <= 0) fail("Relocalization map file length was 0");
             System.out.println(

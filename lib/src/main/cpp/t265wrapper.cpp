@@ -33,7 +33,6 @@ static_assert(sizeof(jlong) >= sizeof(void *));
 
 // Constants
 constexpr auto originNodeName = "origin";
-constexpr auto exportRelocMapStopDelay = std::chrono::seconds(10);
 constexpr auto logTag = "ftc265";
 
 // We cache all of these because we can
@@ -297,7 +296,7 @@ Java_com_spartronics4915_lib_T265Camera_sendOdometryRaw(
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_spartronics4915_lib_T265Camera_exportRelocalizationMap(
-    JNIEnv *env, jobject thisObj, jstring savePath) {
+    JNIEnv *env, jobject thisObj, jstring savePath, jint stopDelay) {
   try {
     ensureCache(env, thisObj);
 
@@ -324,7 +323,7 @@ Java_com_spartronics4915_lib_T265Camera_exportRelocalizationMap(
     // Unfortunately there is apparently no way to figure out if we're ready to
     // export the map. See:
     // https://github.com/IntelRealSense/librealsense/issues/4024#issuecomment-494258285
-    std::this_thread::sleep_for(exportRelocMapStopDelay);
+    std::this_thread::sleep_for(std::chrono::seconds(stopDelay));
 
     // set_static_node fails if the confidence is not High... We don't currently
     // use the static node, but you really probably shouldn't be exporting your
@@ -349,15 +348,12 @@ Java_com_spartronics4915_lib_T265Camera_exportRelocalizationMap(
     // TODO: Camera never gets started again...
     // If we try to call pipeline->start() it doesn't work. Bug in librealsense?
   } catch (std::exception &e) {
-    // TODO: Make sleep time configurable (this will probably be a common issue
-    // users run into)
+
     auto what = std::string(e.what());
     what +=
         " (If you got something like \"null pointer passed for argument "
         "\"buffer\"\", this means that you have a very large relocalization "
-        "map, and you should increase exportRelocMapStopDelay in ";
-    what += __FILE__;
-    what += ")";
+        "map, and you should increase the stopDelay you pass in.)";
     env->ThrowNew(exception, what.c_str());
   }
 }

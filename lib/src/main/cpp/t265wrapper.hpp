@@ -32,7 +32,8 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_com_spartronics4915_lib_T265Camera_exportRelocalizationMap(JNIEnv *,
                                                                 jobject,
-                                                                jstring);
+                                                                jstring,
+                                                                jint);
 
 /*
  * Class:     com_spartronics4915_lib_T265Camera
