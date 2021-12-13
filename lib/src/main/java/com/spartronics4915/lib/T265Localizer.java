@@ -1,7 +1,5 @@
 package com.spartronics4915.lib;
 
-import static com.spartronics4915.lib.T265Hooks.slamera;
-
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.localization.Localizer;
@@ -11,6 +9,8 @@ import org.jetbrains.annotations.Nullable;
 /** Localizer for the T265 camera. */
 @SuppressWarnings("unused")
 public class T265Localizer implements Localizer {
+    private final T265Camera slamera;
+
     // Interface so we can pass a callback as a parameter
     public interface SendOdometryFunction {
         Vector2d run();
@@ -83,5 +83,9 @@ public class T265Localizer implements Localizer {
      */
     public void setSendOdometryCallback(SendOdometryFunction sendOdometryCallback) {
         this.sendOdometryCallback = sendOdometryCallback;
+    }
+
+    public T265Localizer(T265Camera slamera) {
+        this.slamera = slamera;
     }
 }

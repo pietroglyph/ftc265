@@ -15,7 +15,7 @@ import java.util.function.Consumer;
  * of the librealsense that is useful to robot tracking is exposed in this class.
  *
  * <p>We employ JNI to call librealsense. There <i>are</i> Java bindings for librealsense, but they
- * are not complete and do not support our usecase.
+ * are not complete and do not support our use-case.
  *
  * <p>This class works entirely in 2d, even though the tracking camera supports giving us a third
  * dimension (Z).
@@ -28,9 +28,6 @@ import java.util.function.Consumer;
 @SuppressWarnings("unused")
 public class T265Camera {
     private static final String kLogTag = "ftc265";
-
-    private static final float inToM = 0.0254f;
-    private static final float mToIn = 1.0f / 0.0254f;
 
     private static UnsatisfiedLinkError mLinkError = null;
 
@@ -60,6 +57,30 @@ public class T265Camera {
         High,
     }
 
+    public static class OdometryInfo {
+        public final Pose2d offset;
+        public final double covariance;
+
+        /**
+         * Odometry info for the camera.
+         */
+        public OdometryInfo() {
+            this(new Pose2d(), 0);
+        }
+
+        /**
+         * Odometry info for the camera.
+         *
+         * @param offset Offset of the center of the robot from the center of the camera.
+         * @param covariance Covariance of the odometry input when doing sensor fusion (you
+         *     probably want to tune this).
+         */
+        public OdometryInfo(Pose2d offset, double covariance) {
+            this.offset = offset;
+            this.covariance = covariance;
+        }
+    }
+
     @SuppressWarnings("unused")
     public static class CameraUpdate {
         /** The robot's pose in inches. */
@@ -70,13 +91,15 @@ public class T265Camera {
         public final PoseConfidence confidence;
 
         public CameraUpdate(Pose2d pose, Pose2d velocity, PoseConfidence confidence) {
-            this.pose = new Pose2d(pose.getX() * mToIn, pose.getY() * mToIn, pose.getHeading());
-            this.velocity =
-                    new Pose2d(
-                            velocity.getX() * mToIn,
-                            velocity.getY() * mToIn,
-                            velocity.getHeading());
+            this.pose = new Pose2d(pose.getX(), pose.getY(), pose.getHeading());
+            this.velocity = new Pose2d(velocity.getX(), velocity.getY(), velocity.getHeading());
             this.confidence = confidence;
+        }
+
+        public CameraUpdate() {
+            this.pose = new Pose2d();
+            this.velocity = new Pose2d();
+            this.confidence = PoseConfidence.Failed;
         }
     }
 
@@ -88,40 +111,39 @@ public class T265Camera {
     private long mNativeCameraObjectPointer = 0;
 
     // Protected by a mutex on this
+    // Whether the camera is currently sending data.
     private boolean mIsStarted = false;
+    // The offset of the camera from the robot.
     private Pose2d mRobotOffset;
+    // The offset calculated for set pose functionality.
     private Pose2d mOriginOffset = new Pose2d();
 
     // Protected by mUpdateMutex
     private final Object mUpdateMutex = new Object();
+    // The latest update from the native code.
     private CameraUpdate mLastReceivedUpdate = null;
+    // The update consumer.
     private Consumer<CameraUpdate> mPoseConsumer = null;
 
     /**
      * This method constructs a T265 camera and sets it up with the right info. {@link
      * T265Camera#start start} will not be called, you must call it yourself.
      *
-     * @param robotOffset Offset of the center of the robot from the center of the camera.
-     * @param odometryCovariance Covariance of the odometry input when doing sensor fusion (you
-     *     probably want to tune this).
+     * @param odometryInfo Odometry info for the camera.
      */
-    public T265Camera(Pose2d robotOffset, double odometryCovariance, Context appContext) {
-        this(robotOffset, odometryCovariance, "", appContext);
+    public T265Camera(OdometryInfo odometryInfo, Context appContext) {
+        this(odometryInfo, "", appContext);
     }
 
     /**
      * This method constructs a T265 camera and sets it up with the right info. {@link
      * T265Camera#start start} will not be called, you must call it yourself.
      *
-     * @param robotOffsetInches Offset of the center of the robot from the center of the camera.
-     *     Units are inches.
-     * @param odometryCovariance Covariance of the odometry input when doing sensor fusion (you
-     *     probably want to tune this)
+     * @param odometryInfo Odometry info for the camera.
      * @param relocMapPath path (including filename) to a relocalization map to load.
      */
     public T265Camera(
-            Pose2d robotOffsetInches,
-            double odometryCovariance,
+            OdometryInfo odometryInfo,
             String relocMapPath,
             Context appContext) {
         if (mLinkError != null) {
@@ -153,12 +175,8 @@ public class T265Camera {
                                 mHasSeenDeviceBefore |= ptr != 0;
                                 mNativeCameraObjectPointer = ptr;
                             }
-                            setOdometryInfoRaw(
-                                    (float) robotOffsetInches.getX() * inToM,
-                                    (float) robotOffsetInches.getY() * inToM,
-                                    (float) robotOffsetInches.getHeading(),
-                                    odometryCovariance);
-                            mRobotOffset = robotOffsetInches;
+                            setOdometryInfo(odometryInfo);
+                            mRobotOffset = odometryInfo.offset;
 
                             Log.d(kLogTag, "Native code should be done initializing");
                         } catch (Exception e) {
@@ -266,7 +284,7 @@ public class T265Camera {
     }
 
     /**
-     * @return Whether or not the camera is started. Note: the camera driver can still be
+     * @return Whether the camera is started. Note: the camera driver can still be
      *     initializing while it is started.
      */
     public synchronized boolean isStarted() {
@@ -286,7 +304,7 @@ public class T265Camera {
                 Log.w(
                         kLogTag,
                         "Attempt to get last received update before any updates have been received; are you using the wrong T265Camera::start overload, or is the camera not initialized yet or busy?");
-                return new CameraUpdate(new Pose2d(), new Pose2d(), PoseConfidence.Failed);
+                return new CameraUpdate();
             }
             return mLastReceivedUpdate;
         }
@@ -300,15 +318,24 @@ public class T265Camera {
     }
 
     /**
-     * Exports a binary relocalization map file to the given path. This will stop the camera.
+     * Exports a binary relocalization map file to the given path. This will stop the camera. It is recommended to use
+     * the desktop app to export the map, purely for the sake of your sanity.
      * Because of a librealsense bug the camera isn't restarted after you call this method. TODO:
      * Fix that.
      *
      * @param path Path (with filename) to export to
-     * @param stopDelay Time (in seconds) to wait before assuming the camera is ready to export This
+     * @param stopDelay Time (in seconds) to wait before assuming the camera is ready to export. This
      *     is gross, but there is no way to be sure the camera is ready.
      */
     public native void exportRelocalizationMap(String path, int stopDelay);
+
+    /**
+     * Set the odometry info for the camera.
+     * @param info The odometry info to set.
+     */
+    public void setOdometryInfo(OdometryInfo info) {
+        setOdometryInfo(info.offset, info.covariance);
+    }
 
     /**
      * Set the odometry info for the camera.
@@ -317,34 +344,13 @@ public class T265Camera {
      * @param measurementCovariance The covariance of the odometry measurements.
      */
     public void setOdometryInfo(Pose2d robotOffset, double measurementCovariance) {
-        setOdometryInfo(
-                (float) robotOffset.getX(),
-                (float) robotOffset.getY(),
+        setOdometryInfoRaw(
+                (float) (robotOffset.getX() * PoseMath.inchesToMeters),
+                (float) (robotOffset.getY() * PoseMath.inchesToMeters),
                 (float) robotOffset.getHeading(),
-                (float) measurementCovariance);
-    }
-
-    /**
-     * Set the odometry info for the camera.
-     *
-     * @param robotOffsetX The x offset of the robot from the camera.
-     * @param robotOffsetY The y offset of the robot from the camera.
-     * @param robotOffsetHeading The heading offset of the robot from the camera.
-     * @param measurementCovariance The covariance of the odometry measurements.
-     */
-    public void setOdometryInfo(
-            float robotOffsetX,
-            float robotOffsetY,
-            float robotOffsetHeading,
-            float measurementCovariance) {
-        // Protecting this because we don't want to set this while we're reading a pose update.
-        synchronized (mUpdateMutex) {
-            setOdometryInfoRaw(
-                    robotOffsetX * inToM,
-                    robotOffsetY * inToM,
-                    robotOffsetHeading,
-                    measurementCovariance);
-        }
+                (float) measurementCovariance
+        );
+        mRobotOffset = robotOffset;
     }
 
     /**
@@ -373,8 +379,8 @@ public class T265Camera {
         // Only 1 odometry sensor is supported for now (index 0)
         sendOdometryRaw(
                 0,
-                (float) velocityXInchesPerSecond * inToM,
-                (float) velocityYInchesPerSecond * inToM);
+                (float) (velocityXInchesPerSecond * PoseMath.inchesToMeters),
+                (float) (velocityYInchesPerSecond * PoseMath.inchesToMeters));
     }
 
     /**
@@ -385,9 +391,9 @@ public class T265Camera {
     public synchronized void setPose(Pose2d newPose) {
         synchronized (mUpdateMutex) {
             mOriginOffset =
-                    PoseMath.relativeTo(
-                            newPose,
-                            mLastReceivedUpdate == null ? new Pose2d() : mLastReceivedUpdate.pose);
+                    PoseMath.calculateTransformation(
+                            mLastReceivedUpdate == null ? new Pose2d() : mLastReceivedUpdate.pose,
+                            newPose);
         }
     }
 
@@ -411,15 +417,13 @@ public class T265Camera {
 
     private synchronized void consumePoseUpdate(
             float x, float y, float radians, float dx, float dy, float dtheta, int confOrdinal) {
-        // First we apply an offset to go from the camera coordinate system to the
-        // robot coordinate system with an origin at the center of the robot. This
-        // is not a directional transformation.
-        // Then we transform the pose our camera is giving us so that it reports is
-        // the robot's pose, not the camera's. This is a directional transformation.
-        final Pose2d currentPose =
-                PoseMath.transformBy(
-                        new Pose2d(x - mRobotOffset.getX(), y - mRobotOffset.getY(), radians),
-                        mRobotOffset);
+        // We start by converting all of our values to inches.
+        Pose2d rawCameraPose = new Pose2d(x * PoseMath.metersToInches, y * PoseMath.metersToInches, radians);
+        Pose2d rawVelocity = new Pose2d(dx * PoseMath.metersToInches, dy * PoseMath.metersToInches, dtheta);
+
+        // Calculate the pose of the robot. We know the camera's pose, and we know where the camera is relative to the
+        //  robot. We can calculate the robot's pose by transforming the camera's pose by the inverse of the offset.
+        final Pose2d rawRobotPose = PoseMath.transformBy(rawCameraPose, mRobotOffset.unaryMinus());
 
         if (!mIsStarted) return;
 
@@ -447,10 +451,10 @@ public class T265Camera {
                                 + "\" passed from native code");
         }
 
-        final Pose2d transformedPose = PoseMath.transformBy(mOriginOffset, currentPose);
+        // We now want to transform the robot pose so that it's in the coordinate system that the user set.
+        final Pose2d transformedPose = PoseMath.transformBy(rawRobotPose, mOriginOffset);
 
-        mPoseConsumer.accept(
-                new CameraUpdate(transformedPose, new Pose2d(dx, dy, dtheta), confidence));
+        mPoseConsumer.accept(new CameraUpdate(transformedPose, rawVelocity, confidence));
     }
 
     /** Thrown if something goes wrong in the native code */
