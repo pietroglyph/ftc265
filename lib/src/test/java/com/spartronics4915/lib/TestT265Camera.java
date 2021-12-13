@@ -8,8 +8,6 @@ import androidx.test.core.app.ApplicationProvider;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -63,7 +61,11 @@ public class TestT265Camera {
             cam.free();
 
             // Try making a new camera and importing the map
-            cam = new T265Camera(new T265Camera.OdometryInfo(new Pose2d(), 0f), mapPath.toString(), context);
+            cam =
+                    new T265Camera(
+                            new T265Camera.OdometryInfo(new Pose2d(), 0f),
+                            mapPath.toString(),
+                            context);
 
             System.out.println("Map imported without errors!");
         } finally {
