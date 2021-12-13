@@ -61,9 +61,7 @@ public class T265Camera {
         public final Pose2d offset;
         public final double covariance;
 
-        /**
-         * Odometry info for the camera.
-         */
+        /** Odometry info for the camera. */
         public OdometryInfo() {
             this(new Pose2d(), 0);
         }
@@ -72,8 +70,8 @@ public class T265Camera {
          * Odometry info for the camera.
          *
          * @param offset Offset of the center of the robot from the center of the camera.
-         * @param covariance Covariance of the odometry input when doing sensor fusion (you
-         *     probably want to tune this).
+         * @param covariance Covariance of the odometry input when doing sensor fusion (you probably
+         *     want to tune this).
          */
         public OdometryInfo(Pose2d offset, double covariance) {
             this.offset = offset;
@@ -142,10 +140,7 @@ public class T265Camera {
      * @param odometryInfo Odometry info for the camera.
      * @param relocMapPath path (including filename) to a relocalization map to load.
      */
-    public T265Camera(
-            OdometryInfo odometryInfo,
-            String relocMapPath,
-            Context appContext) {
+    public T265Camera(OdometryInfo odometryInfo, String relocMapPath, Context appContext) {
         if (mLinkError != null) {
             throw mLinkError;
         }
@@ -284,8 +279,8 @@ public class T265Camera {
     }
 
     /**
-     * @return Whether the camera is started. Note: the camera driver can still be
-     *     initializing while it is started.
+     * @return Whether the camera is started. Note: the camera driver can still be initializing
+     *     while it is started.
      */
     public synchronized boolean isStarted() {
         return mIsStarted;
@@ -318,19 +313,20 @@ public class T265Camera {
     }
 
     /**
-     * Exports a binary relocalization map file to the given path. This will stop the camera. It is recommended to use
-     * the desktop app to export the map, purely for the sake of your sanity.
+     * Exports a binary relocalization map file to the given path. This will stop the camera. It is
+     * recommended to use the desktop app to export the map, purely for the sake of your sanity.
      * Because of a librealsense bug the camera isn't restarted after you call this method. TODO:
      * Fix that.
      *
      * @param path Path (with filename) to export to
-     * @param stopDelay Time (in seconds) to wait before assuming the camera is ready to export. This
-     *     is gross, but there is no way to be sure the camera is ready.
+     * @param stopDelay Time (in seconds) to wait before assuming the camera is ready to export.
+     *     This is gross, but there is no way to be sure the camera is ready.
      */
     public native void exportRelocalizationMap(String path, int stopDelay);
 
     /**
      * Set the odometry info for the camera.
+     *
      * @param info The odometry info to set.
      */
     public void setOdometryInfo(OdometryInfo info) {
@@ -348,8 +344,7 @@ public class T265Camera {
                 (float) (robotOffset.getX() * PoseMath.inchesToMeters),
                 (float) (robotOffset.getY() * PoseMath.inchesToMeters),
                 (float) robotOffset.getHeading(),
-                (float) measurementCovariance
-        );
+                (float) measurementCovariance);
         mRobotOffset = robotOffset;
     }
 
@@ -418,11 +413,15 @@ public class T265Camera {
     private synchronized void consumePoseUpdate(
             float x, float y, float radians, float dx, float dy, float dtheta, int confOrdinal) {
         // We start by converting all of our values to inches.
-        Pose2d rawCameraPose = new Pose2d(x * PoseMath.metersToInches, y * PoseMath.metersToInches, radians);
-        Pose2d rawVelocity = new Pose2d(dx * PoseMath.metersToInches, dy * PoseMath.metersToInches, dtheta);
+        Pose2d rawCameraPose =
+                new Pose2d(x * PoseMath.metersToInches, y * PoseMath.metersToInches, radians);
+        Pose2d rawVelocity =
+                new Pose2d(dx * PoseMath.metersToInches, dy * PoseMath.metersToInches, dtheta);
 
-        // Calculate the pose of the robot. We know the camera's pose, and we know where the camera is relative to the
-        //  robot. We can calculate the robot's pose by transforming the camera's pose by the inverse of the offset.
+        // Calculate the pose of the robot. We know the camera's pose, and we know where the camera
+        // is relative to the
+        //  robot. We can calculate the robot's pose by transforming the camera's pose by the
+        // inverse of the offset.
         final Pose2d rawRobotPose = PoseMath.transformBy(rawCameraPose, mRobotOffset.unaryMinus());
 
         if (!mIsStarted) return;
@@ -451,7 +450,8 @@ public class T265Camera {
                                 + "\" passed from native code");
         }
 
-        // We now want to transform the robot pose so that it's in the coordinate system that the user set.
+        // We now want to transform the robot pose, so it's in the coordinate system that the
+        // user set.
         final Pose2d transformedPose = PoseMath.transformBy(rawRobotPose, mOriginOffset);
 
         mPoseConsumer.accept(new CameraUpdate(transformedPose, rawVelocity, confidence));

@@ -10,7 +10,8 @@ public class PoseMath {
     /**
      * Transforms a Pose2d by another Pose2d.
      *
-     * <p><a href="https://www.desmos.com/calculator/0x7xoeiudh">A simulator for this behavior can be found here.</a>
+     * <p><a href="https://www.desmos.com/calculator/0x7xoeiudh">A simulator for this behavior can
+     * be found here.</a>
      *
      * @param t The first pose.
      * @param b The pose to transform the first pose by.
@@ -29,7 +30,8 @@ public class PoseMath {
     /**
      * Calculates the transformation between two Pose2d objects.
      *
-     * <p><a href="https://www.desmos.com/calculator/fttw74j9pp">A simulator for this behavior can be found here.</a>
+     * <p><a href="https://www.desmos.com/calculator/fttw74j9pp">A simulator for this behavior can
+     * be found here.</a>
      *
      * @param t The origin pose.
      * @param r The result pose.
@@ -47,6 +49,7 @@ public class PoseMath {
 
     /**
      * Convert a Pose2d from meters to inches.
+     *
      * @param pose The pose to convert.
      * @return The converted pose.
      */
@@ -56,6 +59,7 @@ public class PoseMath {
 
     /**
      * Convert a Vector2d from meters to inches.
+     *
      * @param vec The vector to convert.
      * @return The converted vector.
      */
@@ -65,6 +69,7 @@ public class PoseMath {
 
     /**
      * Convert a Pose2d from inches to meters.
+     *
      * @param pose The pose to convert.
      * @return The converted pose.
      */
@@ -74,6 +79,7 @@ public class PoseMath {
 
     /**
      * Convert a Vector2d from inches to meters.
+     *
      * @param vec The vector to convert.
      * @return The converted vector.
      */
