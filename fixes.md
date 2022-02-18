@@ -109,7 +109,7 @@ Offset Pos = (-2,1)
 (8,6) + (-2,1):
 Trans Pos = (6,7)
 ```
-With `Trans Pos` not being `(0,0)` this concludes that `setPose()` is **fundamentally broken**.
+With `Trans Pos` not being `(0,0)` this concludes that `setPose` is **fundamentally broken**.
 
 ### My edits:
 I added a variable called `mLastRecievedCameraUpdate` (spelled incorrectly to match the incorrect spelling of `mLastRecievedCameraUpdate`) [here](https://github.com/Sparib/ftc265/blob/master/lib/src/main/java/com/spartronics4915/lib/T265Camera.java#L90).
