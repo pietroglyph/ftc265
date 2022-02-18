@@ -9,15 +9,15 @@ Then, `setPose` is ran, but initialization isn't complete, so `setPose` defaults
 Then, the camera fully initializes and whatever the position it started at is used, with the incorrect offset from `setPose`.
 
 ### Example:
-(Where there is something that looks like `(0,0,0)`, it means `(x,y,rotation)`)\
+(Where there is something that looks like `(0,0)`, it means `(x,y)`. I ignore rotation for simplicity's sake, but it acts the same)\
 Initialization begins\
-`setPose(0,0,0)` is ran\
-Camera gives a reference of `(0,0,0)` because it has yet to initialize fully\
+`setPose(0,0)` is ran\
+Camera gives a reference of `(0,0)` because it has yet to initialize fully\
 The offset is none because the origin and new pose for `setPose` were the same\
-The camera fully initializes at a position of `(10,2,20)` and that is passed to the program because there is no offset.
+The camera fully initializes at a position of `(10,2)` and that is passed to the program because there is no offset.
 
 ### The Fix:
-Wait until `getLastReceivedUpdate()` returns actual numbers and not just `(0,0,0)`, that way `setPose` has actual values to calculate off.
+Wait until `getLastReceivedUpdate()` returns actual numbers and not just `(0,0)`, that way `setPose` has actual values to calculate off.
 
 ## 2) `setPose` is broken.
 I have no idea how no one has noticed this and asked about it or even explored it for themselves, as I did, but I have found that the `setPose` function is truly broken.
