@@ -51,7 +51,7 @@ public class T265Camera {
         }
     }
 
-    public enum PoseConfidence {
+    public static enum PoseConfidence {
         Failed,
         Low,
         Medium,
