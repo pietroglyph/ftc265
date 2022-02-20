@@ -223,7 +223,7 @@ Java_com_spartronics4915_lib_T265Camera_newCamera(JNIEnv *env, jobject thisObj,
         auto yaw = 2 * atan2f(poseData.rotation.y, poseData.rotation.w);
 
         auto callbackMethodID =
-            env->GetMethodID(holdingClass, "consumeUpdate", "(FFFFFFI)V");
+            env->GetMethodID(holdingClass, "consumeCameraUpdate", "(FFFFFFI)V");
         if (!callbackMethodID)
           throw std::runtime_error("consumePoseUpdate method doesn't exist");
 
