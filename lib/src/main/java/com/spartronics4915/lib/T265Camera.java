@@ -369,6 +369,8 @@ public class T265Camera {
                                 new Rotation2d(radians))
                         .transformBy(mRobotOffset);
 
+        if (!mIsStarted) return;
+
         cameraConsumer.accept(cameraUpdate);
         consumePoseUpdate(x, y, radians, dx, dy, dtheta, confOrdinal);
     }
