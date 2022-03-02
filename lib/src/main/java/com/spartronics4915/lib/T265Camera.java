@@ -87,8 +87,17 @@ public class T265Camera {
 
     // Protected by mUpdateMutex
     private final Object mUpdateMutex = new Object();
+    private Pose2d mLastRecievedCameraUpdate = null;
     private CameraUpdate mLastRecievedUpdate = null;
     private Consumer<CameraUpdate> mPoseConsumer = null;
+
+    // Consumer for CameraUpdate
+    private final Consumer<Pose2d> cameraConsumer =
+            (update) -> {
+                synchronized (mUpdateMutex) {
+                    mLastRecievedCameraUpdate = update;
+                }
+            };
 
     /**
      * This method constructs a T265 camera and sets it up with the right info. {@link
@@ -327,7 +336,9 @@ public class T265Camera {
         synchronized (mUpdateMutex) {
             mOriginOffset =
                     newPose.relativeTo(
-                            mLastRecievedUpdate == null ? new Pose2d() : mLastRecievedUpdate.pose);
+                            mLastRecievedCameraUpdate == null
+                                    ? new Pose2d()
+                                    : mLastRecievedCameraUpdate);
         }
     }
 
@@ -348,6 +359,21 @@ public class T265Camera {
     private native long newCamera(String mapPath);
 
     private static native void cleanup();
+
+    private synchronized void consumeCameraUpdate(
+            float x, float y, float radians, float dx, float dy, float dtheta, int confOrdinal) {
+        final Pose2d cameraUpdate =
+                new Pose2d(
+                                x - mRobotOffset.getTranslation().getX(),
+                                y - mRobotOffset.getTranslation().getY(),
+                                new Rotation2d(radians))
+                        .transformBy(mRobotOffset);
+
+        if (!mIsStarted) return;
+
+        cameraConsumer.accept(cameraUpdate);
+        consumePoseUpdate(x, y, radians, dx, dy, dtheta, confOrdinal);
+    }
 
     private synchronized void consumePoseUpdate(
             float x, float y, float radians, float dx, float dy, float dtheta, int confOrdinal) {
